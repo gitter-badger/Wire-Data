@@ -28,10 +28,10 @@
 
 if ( first() )
 {
-    Version = array( 1, 1, 0 )
+    Version = array( 1, 1, 1 )
     VersionString = Version:concat( "." )
     VersionFilePath = "updates/spycam/version.txt"
-    VersionTextFileURL = "https://github.com/CaptainPRICE/Wire-Data/updates/spycam/version.txt"
+    VersionTextFileURL = "https://raw.githubusercontent.com/CaptainPRICE/Wire-Data/master/e2files/updates/spycam/version.txt"
     ServerFileURL = "https://raw.githubusercontent.com/CaptainPRICE/Wire-Data/master/expression2/SpyCam.txt"
 #ifndef propSpawnEffect( number ) | propSpawnUndo( number ) | propSpawn( string, vector, angle, number ) | entity:parentTo( entity ) | entity:propDelete() | entity:propFreeze( number ) | entity:propNotSolid( number ) | entity:setAng( angle ) | entity:setColor( vector4 ) | entity:setPos( vector )
     error( "Can not continue due propcore extension is not installed/enabled on this server." )
