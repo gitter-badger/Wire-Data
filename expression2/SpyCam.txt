@@ -28,7 +28,7 @@
 
 if ( first() )
 {
-    Version = array( 1, 1, 1 )
+    Version = array( 1, 1, 2 )
     VersionString = Version:concat( "." )
     VersionFilePath = "updates/spycam/version.txt"
     VersionTextFileURL = "https://raw.githubusercontent.com/CaptainPRICE/Wire-Data/master/e2files/updates/spycam/version.txt"
@@ -146,9 +146,10 @@ elseif ( fileClk( VersionFilePath ) )
             fileWrite( VersionFilePath, VersionString )
             break
         case _FILE_OK,
-            if ( fileRead() != VersionString )
+            local ReadVersion = fileRead():gmatch( "(%d+)%.(%d+)%.(%d+)" )[ 1, array ]
+            if ( Version[ 1, number ] > ReadVersion[ 1, string ]:toNumber() | Version[ 2, number ] > ReadVersion[ 2, string ]:toNumber() | Version[ 3, number ] > ReadVersion[ 3, string ]:toNumber() )
             {
-                print( format( "%s: SpyCam was successfully upgraded to v%s!", entity():getName(), VersionString ) )
+                print( format( "%s: Successfully upgraded to v%s!", entity():getName(), VersionString ) )
             }
             if ( !fileCanWrite() )
             {
@@ -165,9 +166,7 @@ elseif ( fileClk( VersionFilePath ) )
 elseif ( httpClk() & httpRequestUrl() == VersionTextFileURL )
 {
     # Compare current version with server response version.
-    local HttpData = httpData()
-    print( HttpData )
-    local ReadVersion = HttpData:gmatch( "^(%d+)%.(%d+)%.(%d+)$" )[ 1, array ]
+    local ReadVersion = httpData():gmatch( "(%d+)%.(%d+)%.(%d+)" )[ 1, array ]
     if ( Version[ 1, number ] >= ReadVersion[ 1, string ]:toNumber() & Version[ 2, number ] >= ReadVersion[ 2, string ]:toNumber() & Version[ 3, number ] >= ReadVersion[ 3, string ]:toNumber() )
     {
         print( format( "%s: No updates available, you are running the most recent SpyCam :)", entity():getName() ) )
@@ -175,7 +174,7 @@ elseif ( httpClk() & httpRequestUrl() == VersionTextFileURL )
     }
     # Fetch a new update.
     timer( "downloadnewupdate", httpCanRequest() ? 10 : 3000 )
-    local UpdateMessage = format( "%s: New update is available for download (running v%s)!", entity():getName(), VersionString )
+    local UpdateMessage = format( "%s: New update is available for download!", entity():getName(), VersionString )
     hint( UpdateMessage, 7 )
     print( UpdateMessage )
 }
