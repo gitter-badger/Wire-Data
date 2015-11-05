@@ -16,19 +16,23 @@
 #
 #  Contributions/forks are welcome, looking for tweaks/optimizations!
 #  There are a few known bugs which can not be fixed using Expression 2.
-#  I hope everybody will enjoy this E2! :)
+#  I hope everybody will enjoy and also learn something new from this E2! :)
 #  Happy spying, CaptainPRICE.
+#  P.S. I have integrated auto-updater, so you don't have to check for updates manually!
 #
 
 @name SpyCam
 @inputs Camera:entity
 @persist Screen:entity CameraWL:wirelink
-@outputs Target:entity Version:string
+@outputs Version:array Target:entity [ServerFileURL VersionFilePath VersionString VersionTextFileURL]:string
 
 if ( first() )
 {
-    Version = "1.0.0"
-
+    Version = array( 1, 1, 0 )
+    VersionString = Version:concat( "." )
+    VersionFilePath = "updates/spycam/version.txt"
+    VersionTextFileURL = "https://github.com/CaptainPRICE/Wire-Data/updates/spycam/version.txt"
+    ServerFileURL = "https://raw.githubusercontent.com/CaptainPRICE/Wire-Data/master/expression2/SpyCam.txt"
 #ifndef propSpawnEffect( number ) | propSpawnUndo( number ) | propSpawn( string, vector, angle, number ) | entity:parentTo( entity ) | entity:propDelete() | entity:propFreeze( number ) | entity:propNotSolid( number ) | entity:setAng( angle ) | entity:setColor( vector4 ) | entity:setPos( vector )
     error( "Can not continue due propcore extension is not installed/enabled on this server." )
 #endif
@@ -65,7 +69,7 @@ if ( first() )
         #  Automatically switch to RT camera tool when this E2 gets spawned (simply to save time).
         concmd( "gmod_toolmode wire_rtcam" )
     }
-    setName( format( "SpyCam (version %s)", Version ) )
+    setName( format( "SpyCam (version %s)", VersionString ) )
     propSpawnEffect( 0 )
     propSpawnUndo( 0 )
     local Ang = entity():angles()
@@ -78,6 +82,16 @@ if ( first() )
     Screen:parentTo( entity() )
     Screen:propNotSolid( 1 )
     Target = owner() # Default target to spy on.
+
+    runOnFile( 1 )
+    runOnHTTP( 1 )
+    if ( !fileCanLoad() | !httpCanRequest() )
+    {
+        reset()
+        exit()
+    }
+    fileLoad( VersionFilePath )
+    httpRequest( VersionTextFileURL )
 
     runOnChat( 1 )
     runOnLast( 1 )
@@ -99,7 +113,7 @@ elseif ( chatClk( owner() ) )
                 break
             }
             local ResultCode = trySetTarget( owner():aimEntity() )
-            if ( ResultCode == -1)
+            if ( ResultCode == -1 )
             {
                 print( format( "%s: Already spying on (%s) '%s'.", entity():getName(), Target:steamID(), Target:name() ) )
             }
@@ -117,6 +131,86 @@ elseif ( chatClk( owner() ) )
             #  Play sound after print.
             break
     }
+}
+elseif ( fileClk( VersionFilePath ) )
+{
+    local FileStatus = fileStatus()
+    switch ( FileStatus )
+    {
+        case _FILE_404,
+            if ( !fileCanWrite() )
+            {
+                print( format( "%s: Could not write a version file!", entity():getName() ) )
+                break
+            }
+            fileWrite( VersionFilePath, VersionString )
+            break
+        case _FILE_OK,
+            if ( fileRead() != VersionString )
+            {
+                print( format( "%s: SpyCam was successfully upgraded to v%s!", entity():getName(), VersionString ) )
+            }
+            if ( !fileCanWrite() )
+            {
+                print( format( "%s: Could not write a version file!", entity():getName() ) )
+                break
+            }
+            fileWrite( VersionFilePath, VersionString )
+            break
+        default,
+            print( format( "%s: Something went wrong on version file access (file status=%s)!", entity():getName(), FileStatus ) )
+            break
+    }
+}
+elseif ( httpClk() & httpRequestUrl() == VersionTextFileURL )
+{
+    # Compare current version with server response version.
+    local HttpData = httpData()
+    print( HttpData )
+    local ReadVersion = HttpData:gmatch( "^(%d+)%.(%d+)%.(%d+)$" )[ 1, array ]
+    if ( Version[ 1, number ] >= ReadVersion[ 1, string ]:toNumber() & Version[ 2, number ] >= ReadVersion[ 2, string ]:toNumber() & Version[ 3, number ] >= ReadVersion[ 3, string ]:toNumber() )
+    {
+        print( format( "%s: No updates available, you are running the most recent SpyCam :)", entity():getName() ) )
+        exit()
+    }
+    # Fetch a new update.
+    timer( "downloadnewupdate", httpCanRequest() ? 10 : 3000 )
+    local UpdateMessage = format( "%s: New update is available for download (running v%s)!", entity():getName(), VersionString )
+    hint( UpdateMessage, 7 )
+    print( UpdateMessage )
+}
+elseif ( clk( "downloadnewupdate" ) )
+{
+    # Repeat until a HTTP request can be send.
+    if ( !httpCanRequest() )
+    {
+        timer( clkName(), 100 )
+        exit()
+    }
+    # Get contents of the most recent Expression 2 text file.
+    httpRequest( ServerFileURL )
+    stoptimer( clkName() )
+}
+elseif ( httpClk() & httpRequestUrl() == ServerFileURL )
+{
+    timer( "installnewupdate", fileCanWrite() ? 10 : 200 )
+}
+elseif ( clk( "installnewupdate" ) )
+{
+    local NewExpression2Code = httpData()
+#ifdef entity:remoteSetCode( string )
+    entity():remoteSetCode( NewExpression2Code )
+#else
+    # Repeat until a file can be written to disk.
+    if ( !fileCanWrite() )
+    {
+        timer( clkName(), 100 )
+        exit()
+    }
+    fileWrite( ">e2shared/spycam.txt", NewExpression2Code )
+    print( format( "%s: New update has been downloaded to e2shared/spycam.txt file!", entity():getName() ) )
+#endif
+    stoptimer( clkName() )
 }
 elseif ( last() )
 {
