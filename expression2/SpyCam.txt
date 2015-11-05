@@ -14,6 +14,8 @@
 #   By default, it will target/spy on You. To change the target player, open chatbox and say "spy X" (without double-quotes), where X is optional argument/parameter that takes Steam ID. To get Steam ID of player, open (Developer) Console (make sure you have enabled it in Options first) and submit "status" command.
 #   If you do not specify a player's Steam ID to "spy" chat-command, it will make an additional check if you are aiming on a valid player, if so it will target that player; otherwise you will get an error message describing what went wrong - it is user-friendly.
 #
+#  Forum thread URL: http://www.wiremod.com/forum/finished-contraptions/35243-spycam-e2-first-public-e2-release.html
+#  Repository URL: https://github.com/CaptainPRICE/Wire-Data
 #  Contributions/forks are welcome, looking for tweaks/optimizations!
 #  There are a few known bugs which can not be fixed using Expression 2.
 #  I hope everybody will enjoy and also learn something new from this E2! :)
@@ -23,19 +25,96 @@
 
 @name SpyCam
 @inputs Camera:entity
-@persist Screen:entity CameraWL:wirelink
-@outputs Version:array Target:entity [ServerFileURL VersionFilePath VersionString VersionTextFileURL]:string
+@persist Version:array Screen:entity [MAJOR_AVAILABLE MINOR_AVAILABLE NO_UPDATE_AVAILABLE PATCH_AVAILABLE] [ServerFileURL VersionFilePath VersionPattern VersionTextFileURL]:string CameraWL:wirelink
+@outputs Target:entity VersionString:string
 
 if ( first() )
 {
-    Version = array( 1, 1, 2 )
+    # Constant definitions.
+    Version = array( 2, 0, 0 )
+    VersionPattern = "^(%d+)%.(%d+)%.(%d+)$"
     VersionString = Version:concat( "." )
     VersionFilePath = "updates/spycam/version.txt"
     VersionTextFileURL = "https://raw.githubusercontent.com/CaptainPRICE/Wire-Data/master/e2files/updates/spycam/version.txt"
     ServerFileURL = "https://raw.githubusercontent.com/CaptainPRICE/Wire-Data/master/expression2/SpyCam.txt"
+    MAJOR_AVAILABLE = 3
+    MINOR_AVAILABLE = 2
+    PATCH_AVAILABLE = 1
+    NO_UPDATE_AVAILABLE = 0
+
 #ifndef propSpawnEffect( number ) | propSpawnUndo( number ) | propSpawn( string, vector, angle, number ) | entity:parentTo( entity ) | entity:propDelete() | entity:propFreeze( number ) | entity:propNotSolid( number ) | entity:setAng( angle ) | entity:setColor( vector4 ) | entity:setPos( vector )
     error( "Can not continue due propcore extension is not installed/enabled on this server." )
 #endif
+
+    #
+    # Compares local version with server version.
+    #
+    function number compareVersion( Local:string, Server:string )
+    {
+        local LocalVersion = Local:match( VersionPattern )
+        local ServerVersion = Server:match( VersionPattern )
+        if ( LocalVersion:count() != 3 | ServerVersion:count() != 3 )
+        {
+            return -1 # Received invalid input.
+        }
+        local LocalMajor = LocalVersion[ 1, string ]:toNumber()
+        local ServerMajor = ServerVersion[ 1, string ]:toNumber()
+        if ( LocalMajor < ServerMajor )
+        {
+            return MAJOR_AVAILABLE
+        }
+        if ( LocalMajor >= ServerMajor )
+        {
+            return NO_UPDATE_AVAILABLE
+        }
+        local LocalMinor = LocalVersion[ 2, string ]:toNumber()
+        local ServerMinor = ServerVersion[ 2, string ]:toNumber()
+        if ( LocalMinor < ServerMinor )
+        {
+            return MINOR_AVAILABLE
+        }
+        if ( LocalMinor >= ServerMinor )
+        {
+            return NO_UPDATE_AVAILABLE
+        }
+        if ( LocalVersion[ 3, string ]:toNumber() < ServerVersion[ 3, string ]:toNumber() )
+        {
+            return PATCH_AVAILABLE
+        }
+        return NO_UPDATE_AVAILABLE
+    }
+
+    #
+    # Fetches a new update.
+    #
+    function fetchNewUpdate( ResponseCode:number )
+    {
+        local UpdateMessage = ""
+        switch ( ResponseCode )
+        {
+            case MAJOR_AVAILABLE,
+                UpdateMessage = format( "SpyCam v%s: New major update is available for download!", VersionString )
+                break
+            case MINOR_AVAILABLE,
+                UpdateMessage = format( "SpyCam v%s: New minor update is available for download!", VersionString )
+                break
+            case PATCH_AVAILABLE,
+                UpdateMessage = format( "SpyCam v%s: New patch update is available for download!", VersionString )
+                break
+            case NO_UPDATE_AVAILABLE,
+                UpdateMessage = format( "SpyCam v%s: No newer updates available, you are running the most recent SpyCam :)", VersionString )
+                break
+            default,
+                error( format( "SpyCam v%s: Unhandled response code in fetchNewUpdate function (code=%s)!", VersionString, ResponseCode ) )
+                break
+        }
+        hint( UpdateMessage, 7 )
+        print( UpdateMessage )
+        if ( ResponseCode != NO_UPDATE_AVAILABLE )
+        {
+            timer( "downloadnewupdate", httpCanRequest() ? 10 : 3000 )
+        }
+    }
 
     function entity findPlayerBySteamId( SteamId:string )
     {
@@ -63,13 +142,32 @@ if ( first() )
         return 1
     }
 
+    function string timeNow()
+    {
+        local Hour = ( ( time( "hour" ) + time( "isdst" ) ) % 24 ):toString()
+        if ( Hour:length() < 2 )
+        {
+            Hour = "0" + Hour
+        }
+        local Min = ( time( "min" ) % 60 ):toString()
+        if ( Min:length() < 2 )
+        {
+            Min = "0" + Min
+        }
+        local Sec = ( time( "sec" ) % 60 ):toString()
+        if ( Sec:length() < 2 )
+        {
+            Sec = "0" + Sec
+        }
+        return format( "%s:%s:%s", Hour, Min, Sec )
+    }
+
     if ( convarnum( "wire_expression2_concmd" ) )
     {
         # Requires concmd enabled:
         #  Automatically switch to RT camera tool when this E2 gets spawned (simply to save time).
         concmd( "gmod_toolmode wire_rtcam" )
     }
-    setName( format( "SpyCam (version %s)", VersionString ) )
     propSpawnEffect( 0 )
     propSpawnUndo( 0 )
     local Ang = entity():angles()
@@ -109,25 +207,28 @@ elseif ( chatClk( owner() ) )
             Trim = Exploded:concat( " " )
             if ( trySetTarget( findPlayerBySteamId( Trim:trim() ) ) )
             {
-                print( format( "%s: Now spying on (%s) '%s'.", entity():getName(), Target:steamID(), Target:name() ) )
+                print( format( "SpyCam v%s: Now spying on (%s) %s.", VersionString, Target:steamID(), Target:name() ) )
                 break
             }
             local ResultCode = trySetTarget( owner():aimEntity() )
-            if ( ResultCode == -1 )
+            switch ( ResultCode )
             {
-                print( format( "%s: Already spying on (%s) '%s'.", entity():getName(), Target:steamID(), Target:name() ) )
-            }
-            elseif ( ResultCode == 0 )
-            {
-                print( format( "%s: Invalid syntax provided/Could not find a valid target (correct syntax: 'spy <player Steam ID>' or aim on player and say 'spy' to spy on that player).", entity():getName() ) )
-            }
-            elseif ( ResultCode == 1 )
-            {
-                print( format( "%s: Now spying on (%s) '%s'.", entity():getName(), Target:steamID(), Target:name() ) )
+                case -1,
+                    print( format( "SpyCam v%s: Already spying on (%s) %s.", VersionString, Target:steamID(), Target:name() ) )
+                    break
+                case 0,
+                    print( format( "SpyCam v%s: Invalid syntax provided/Could not find a valid target (correct syntax: 'spy <player Steam ID>' or aim on player and say 'spy' to spy on that player).", VersionString ) )
+                    break
+                case 1,
+                    print( format( "SpyCam v%s: Now spying on (%s) %s.", VersionString, Target:steamID(), Target:name() ) )
+                    break
+                default,
+                    error( format( "SpyCam v%s: Unsupported result code returned from trySetTarget function (code=%s)!", VersionString, ResultCode ) )
+                    break
             }
             # TODO:
             #  Detect whether an argument/parameter (first one) passed is valid Steam identifier.
-            #  Implement search by player (partial) name. Notice, Steam ID should have higher precedence than search by nick/name.
+            #  Implement search by player (partial) name. Note, Steam ID should have higher precedence than search by nick/name.
             #  Play sound after print.
             break
     }
@@ -140,43 +241,44 @@ elseif ( fileClk( VersionFilePath ) )
         case _FILE_404,
             if ( !fileCanWrite() )
             {
-                print( format( "%s: Could not write a version file!", entity():getName() ) )
+                print( format( "SpyCam v%s: Could not write a version file!", VersionString ) )
                 break
             }
             fileWrite( VersionFilePath, VersionString )
             break
         case _FILE_OK,
-            local ReadVersion = fileRead():gmatch( "(%d+)%.(%d+)%.(%d+)" )[ 1, array ]
-            if ( Version[ 1, number ] > ReadVersion[ 1, string ]:toNumber() | Version[ 2, number ] > ReadVersion[ 2, string ]:toNumber() | Version[ 3, number ] > ReadVersion[ 3, string ]:toNumber() )
+            local ReadVersion = fileRead():match( VersionPattern )
+            local ReadVersionString = ReadVersion:concat( "." )
+            local ResponseCode = compareVersion( ReadVersionString, VersionString )
+            switch ( ResponseCode )
             {
-                print( format( "%s: Successfully upgraded to v%s!", entity():getName(), VersionString ) )
+                case MAJOR_AVAILABLE,
+                case MINOR_AVAILABLE,
+                case PATCH_AVAILABLE,
+                    print( format( "SpyCam v%s: Successfully upgraded to v%s!", ReadVersionString, VersionString ) )
+                    break
+                case NO_UPDATE_AVAILABLE,
+                    break
+                default,
+                    error( format( "SpyCam v%s: Unhandled response returned from compareVersion function (code=%s)!", VersionString, ResponseCode ) )
+                    break
             }
             if ( !fileCanWrite() )
             {
-                print( format( "%s: Could not write a version file!", entity():getName() ) )
+                print( format( "SpyCam v%s: Could not write a version file!", VersionString ) )
                 break
             }
             fileWrite( VersionFilePath, VersionString )
             break
         default,
-            print( format( "%s: Something went wrong on version file access (file status=%s)!", entity():getName(), FileStatus ) )
+            print( format( "SpyCam v%s: Something went wrong on version file access (file status=%s)!", VersionString, FileStatus ) )
             break
     }
 }
 elseif ( httpClk() & httpRequestUrl() == VersionTextFileURL )
 {
-    # Compare current version with server response version.
-    local ReadVersion = httpData():gmatch( "(%d+)%.(%d+)%.(%d+)" )[ 1, array ]
-    if ( Version[ 1, number ] >= ReadVersion[ 1, string ]:toNumber() & Version[ 2, number ] >= ReadVersion[ 2, string ]:toNumber() & Version[ 3, number ] >= ReadVersion[ 3, string ]:toNumber() )
-    {
-        print( format( "%s: No updates available, you are running the most recent SpyCam :)", entity():getName() ) )
-        exit()
-    }
-    # Fetch a new update.
-    timer( "downloadnewupdate", httpCanRequest() ? 10 : 3000 )
-    local UpdateMessage = format( "%s: New update is available for download!", entity():getName(), VersionString )
-    hint( UpdateMessage, 7 )
-    print( UpdateMessage )
+    fetchNewUpdate( compareVersion( VersionString, httpData():match( VersionPattern ):concat( "." ) ) )
+    exit()
 }
 elseif ( clk( "downloadnewupdate" ) )
 {
@@ -207,7 +309,7 @@ elseif ( clk( "installnewupdate" ) )
         exit()
     }
     fileWrite( ">e2shared/spycam.txt", NewExpression2Code )
-    print( format( "%s: New update has been downloaded to e2shared/spycam.txt file!", entity():getName() ) )
+    print( format( "SpyCam v%s: New update has been downloaded to e2shared/spycam.txt file!", VersionString ) )
 #endif
     stoptimer( clkName() )
 }
@@ -219,8 +321,9 @@ elseif ( last() )
     }
     exit()
 }
-if ( !->Camera | !Camera:isValid() | Camera:type() != "gmod_wire_rtcam" | !Target:isValid() | !Target:isPlayer() | !Target:isAlive() )
+if ( !->Camera | !Camera:isValid() | Camera:type() != "gmod_wire_rtcam" )
 {
+    setName( format( "SpyCam (version %s)\nTime now : %s", VersionString, timeNow() ) )
     exit()
 }
 if ( changed( Camera ) )
@@ -230,6 +333,15 @@ if ( changed( Camera ) )
     Camera:setColor( vec4( 255, 255, 255, 0 ) )
     CameraWL = Camera:wirelink()
     CameraWL[ "Activate", number ] = 1
+}
+if ( !Target:isValid() | !Target:isPlayer() )
+{
+    trySetTarget( owner() ) # The target player have disconnected? Fallback target.
+}
+setName( format( "SpyCam (version %s)\nSpying on (%s) %s\nTime now : %s", VersionString, Target:steamID(), Target:name(), timeNow() ) )
+if ( !Target:isAlive() ) # It would be invalid to compare the target player health, because it is possible to have negative (< 0) HP while a player is alive (engine bug).
+{
+    exit()
 }
 Camera:setAng( Target:eyeAngles() )
 Camera:setPos( ( Target:inVehicle() & Target:vehicle():isValid() & Target:vehicle():isVehicle() ) ? Target:vehicle():attachmentPos( "vehicle_driver_eyes" ) : Target:attachmentPos( "eyes" ) )
