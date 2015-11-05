@@ -1,0 +1,142 @@
+#
+# IMPORTANT: DO NOT REMOVE OR MODIFY THIS HEADER!
+#
+# CREDITS / CONTRIBUTORS:
+#   Originally created/developed and maintained by STEAM_0:0:65979910 (http://steamcommunity.com/profiles/76561198092225548/ - STEAM_0:0:65979910; U:1:131959820); TheCaptainPrice a.k.a. CaptainPRICE.
+#
+# LICENSE:
+#   GNU General Public License version 3.
+#
+# SETUP / INSTALLATION INSTRUCTIONS:
+#   Save this text file to GarrysMod/garrysmod/data/expression2 folder.
+#   Requires Wire and Unofficial Wire Extras (UWSVN) addons to be installed; otherwise this won't work.
+#   Spawn this E2 code, then spawn a render target (RT) camera (from Wire - Extras). Using Wire Advanced tool, wire "Camera [ENTITY]" input from Expression 2 to RT camera's "Create Entity [ENTITY]" (entity) output.
+#   By default, it will target/spy on You. To change the target player, open chatbox and say "spy X" (without double-quotes), where X is optional argument/parameter that takes Steam ID. To get Steam ID of player, open (Developer) Console (make sure you have enabled it in Options first) and submit "status" command.
+#   If you do not specify a player's Steam ID to "spy" chat-command, it will make an additional check if you are aiming on a valid player, if so it will target that player; otherwise you will get an error message describing what went wrong - it is user-friendly.
+#
+#  Contributions/forks are welcome, looking for tweaks/optimizations!
+#  There are a few known bugs which can not be fixed using Expression 2.
+#  I hope everybody will enjoy this E2! :)
+#  Happy spying, CaptainPRICE.
+#
+
+@name SpyCam
+@inputs Camera:entity
+@persist Screen:entity CameraWL:wirelink
+@outputs Target:entity Version:string
+
+if ( first() )
+{
+    Version = "1.0.0"
+
+#ifndef propSpawnEffect( number ) | propSpawnUndo( number ) | propSpawn( string, vector, angle, number ) | entity:parentTo( entity ) | entity:propDelete() | entity:propFreeze( number ) | entity:propNotSolid( number ) | entity:setAng( angle ) | entity:setColor( vector4 ) | entity:setPos( vector )
+    error( "Can not continue due propcore extension is not installed/enabled on this server." )
+#endif
+
+    function entity findPlayerBySteamId( SteamId:string )
+    {
+        foreach ( K, Player:entity = players() )
+        {
+            if ( Player:steamID() == SteamId )
+            {
+                return Player
+            }
+        }
+        return noentity()
+    }
+
+    function number trySetTarget( NewTarget:entity )
+    {
+        if ( !NewTarget:isValid() | !NewTarget:isPlayer() )
+        {
+            return 0
+        }
+        if ( NewTarget == Target )
+        {
+            return -1
+        }
+        Target = NewTarget
+        return 1
+    }
+
+    if ( convarnum( "wire_expression2_concmd" ) )
+    {
+        # Requires concmd enabled:
+        #  Automatically switch to RT camera tool when this E2 gets spawned (simply to save time).
+        concmd( "gmod_toolmode wire_rtcam" )
+    }
+    setName( format( "SpyCam (version %s)", Version ) )
+    propSpawnEffect( 0 )
+    propSpawnUndo( 0 )
+    local Ang = entity():angles()
+    Ang = angnorm( ang( Ang:pitch() - 90, Ang:yaw() + 180, Ang:roll() + 180 ) )
+    Screen = propSpawn( "models/props_phx/rt_screen.mdl", entity():pos() + ( entity():forward() * vec( 23.5 ) ), Ang, 1 )
+    if ( !propCanCreate() | !Screen:isValid() )
+    {
+        error( "Can not continue due RT screen failed to spawn." )
+    }
+    Screen:parentTo( entity() )
+    Screen:propNotSolid( 1 )
+    Target = owner() # Default target to spy on.
+
+    runOnChat( 1 )
+    runOnLast( 1 )
+    runOnTick( 1 )
+}
+elseif ( chatClk( owner() ) )
+{
+    local Trim = owner():lastSaid():trim()
+    local Exploded = Trim:explode( " " )
+    switch ( Exploded[ 1, string ]:lower() )
+    {
+        case "spy",
+            hideChat( 1 )
+            Exploded:removeString( 1 )
+            Trim = Exploded:concat( " " )
+            if ( trySetTarget( findPlayerBySteamId( Trim:trim() ) ) )
+            {
+                print( format( "%s: Now spying on (%s) '%s'.", entity():getName(), Target:steamID(), Target:name() ) )
+                break
+            }
+            local ResultCode = trySetTarget( owner():aimEntity() )
+            if ( ResultCode == -1)
+            {
+                print( format( "%s: Already spying on (%s) '%s'.", entity():getName(), Target:steamID(), Target:name() ) )
+            }
+            elseif ( ResultCode == 0 )
+            {
+                print( format( "%s: Invalid syntax provided/Could not find a valid target (correct syntax: 'spy <player Steam ID>' or aim on player and say 'spy' to spy on that player).", entity():getName() ) )
+            }
+            elseif ( ResultCode == 1 )
+            {
+                print( format( "%s: Now spying on (%s) '%s'.", entity():getName(), Target:steamID(), Target:name() ) )
+            }
+            # TODO:
+            #  Detect whether an argument/parameter (first one) passed is valid Steam identifier.
+            #  Implement search by player (partial) name. Notice, Steam ID should have higher precedence than search by nick/name.
+            #  Play sound after print.
+            break
+    }
+}
+elseif ( last() )
+{
+    if ( ->Camera & Camera:isValid() & Camera:type() == "gmod_wire_rtcam" )
+    {
+        Camera:propDelete()
+    }
+    exit()
+}
+if ( !->Camera | !Camera:isValid() | Camera:type() != "gmod_wire_rtcam" | !Target:isValid() | !Target:isPlayer() | !Target:isAlive() )
+{
+    exit()
+}
+if ( changed( Camera ) )
+{
+    Camera:propFreeze( 1 )
+    Camera:propNotSolid( 1 )
+    Camera:setColor( vec4( 255, 255, 255, 0 ) )
+    CameraWL = Camera:wirelink()
+    CameraWL[ "Activate", number ] = 1
+}
+Camera:setAng( Target:eyeAngles() )
+Camera:setPos( ( Target:inVehicle() & Target:vehicle():isValid() & Target:vehicle():isVehicle() ) ? Target:vehicle():attachmentPos( "vehicle_driver_eyes" ) : Target:attachmentPos( "eyes" ) )
