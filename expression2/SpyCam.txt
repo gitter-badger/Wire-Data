@@ -31,7 +31,7 @@
 if ( first() )
 {
     # Constant definitions.
-    Version = array( 2, 0, 0 )
+    Version = array( 2, 0, 1 )
     VersionPattern = "^(%d+)%.(%d+)%.(%d+)$"
     VersionString = Version:concat( "." )
     VersionFilePath = "updates/spycam/version.txt"
@@ -42,7 +42,7 @@ if ( first() )
     PATCH_AVAILABLE = 1
     NO_UPDATE_AVAILABLE = 0
 
-#ifndef propSpawnEffect( number ) | propSpawnUndo( number ) | propSpawn( string, vector, angle, number ) | entity:parentTo( entity ) | entity:propDelete() | entity:propFreeze( number ) | entity:propNotSolid( number ) | entity:setAng( angle ) | entity:setColor( vector4 ) | entity:setPos( vector )
+#ifndef propCanCreate() | propSpawnEffect( number ) | propSpawnUndo( number ) | propSpawn( string, vector, angle, number ) | entity:parentTo( entity ) | entity:propDelete() | entity:propFreeze( number ) | entity:propNotSolid( number ) | entity:setAng( angle ) | entity:setColor( vector4 ) | entity:setPos( vector )
     error( "Can not continue due propcore extension is not installed/enabled on this server." )
 #endif
 
@@ -116,8 +116,12 @@ if ( first() )
         }
     }
 
+    #
+    # Attempts to find a player with specified Steam ID.
+    #
     function entity findPlayerBySteamId( SteamId:string )
     {
+        # TODO: Validate SteamId.
         foreach ( K, Player:entity = players() )
         {
             if ( Player:steamID() == SteamId )
@@ -128,6 +132,9 @@ if ( first() )
         return noentity()
     }
 
+    #
+    # Attempts to set the new target player to spy on.
+    #
     function number trySetTarget( NewTarget:entity )
     {
         if ( !NewTarget:isValid() | !NewTarget:isPlayer() )
@@ -142,6 +149,9 @@ if ( first() )
         return 1
     }
 
+    #
+    # Returns the current time (in HH:MM:SS format).
+    #
     function string timeNow()
     {
         local Hour = ( ( time( "hour" ) + time( "isdst" ) ) % 24 ):toString()
@@ -162,6 +172,16 @@ if ( first() )
         return format( "%s:%s:%s", Hour, Min, Sec )
     }
 
+    runOnFile( 1 )
+    runOnHTTP( 1 )
+    if ( !fileCanLoad() | !httpCanRequest() | !propCanCreate() )
+    {
+        reset()
+        exit()
+    }
+    fileLoad( VersionFilePath )
+    httpRequest( VersionTextFileURL )
+
     if ( convarnum( "wire_expression2_concmd" ) )
     {
         # Requires concmd enabled:
@@ -171,25 +191,15 @@ if ( first() )
     propSpawnEffect( 0 )
     propSpawnUndo( 0 )
     local Ang = entity():angles()
-    Ang = angnorm( ang( Ang:pitch() - 90, Ang:yaw() + 180, Ang:roll() + 180 ) )
+    Ang = angnorm( ang( Ang:pitch() - 90, Ang:yaw(), Ang:roll() ) )
     Screen = propSpawn( "models/props_phx/rt_screen.mdl", entity():pos() + ( entity():forward() * vec( 23.5 ) ), Ang, 1 )
-    if ( !propCanCreate() | !Screen:isValid() )
+    if ( !Screen:isValid() )
     {
         error( "Can not continue due RT screen failed to spawn." )
     }
     Screen:parentTo( entity() )
     Screen:propNotSolid( 1 )
     Target = owner() # Default target to spy on.
-
-    runOnFile( 1 )
-    runOnHTTP( 1 )
-    if ( !fileCanLoad() | !httpCanRequest() )
-    {
-        reset()
-        exit()
-    }
-    fileLoad( VersionFilePath )
-    httpRequest( VersionTextFileURL )
 
     runOnChat( 1 )
     runOnLast( 1 )
