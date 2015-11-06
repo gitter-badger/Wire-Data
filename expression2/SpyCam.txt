@@ -26,13 +26,13 @@
 
 @name SpyCam
 @inputs Camera:entity
-@persist Version:array Screen:entity [MAJOR_AVAILABLE MINOR_AVAILABLE NO_UPDATE_AVAILABLE PATCH_AVAILABLE SPY_INVALID_TARGET SPY_NEW_TARGET SPY_SAME_TARGET] [ServerFileURL Steam2IdentifierPattern VersionFilePath VersionPattern VersionTextFileURL]:string CameraWL:wirelink
+@persist Version:array Screen:entity [INVALID_VERSION_NUMBER MAJOR_AVAILABLE MINOR_AVAILABLE NO_UPDATE_AVAILABLE PATCH_AVAILABLE SPY_INVALID_TARGET SPY_NEW_TARGET SPY_SAME_TARGET] [ServerFileURL Steam2IdentifierPattern VersionFilePath VersionPattern VersionTextFileURL]:string CameraWL:wirelink
 @outputs Target:entity VersionString:string
 
 if ( first() )
 {
     # Constant definitions.
-    Version = array( 2, 1, 0 )
+    Version = array( 3, 0, 0 ) # Force upgrade by assigning Version to array(1,0,0).
     VersionPattern = "^(%d+)%.(%d+)%.(%d+)$"
     VersionString = Version:concat( "." )
     VersionFilePath = "updates/spycam/version.txt"
@@ -43,16 +43,19 @@ if ( first() )
     MINOR_AVAILABLE = 2
     PATCH_AVAILABLE = 1
     NO_UPDATE_AVAILABLE = 0
+    INVALID_VERSION_NUMBER = -1
     SPY_INVALID_TARGET = -1
     SPY_SAME_TARGET = 0
     SPY_NEW_TARGET = 1
 
 #ifndef propCanCreate() | propSpawnEffect( number ) | propSpawnUndo( number ) | propSpawn( string, vector, angle, number ) | entity:parentTo( entity ) | entity:propDelete() | entity:propFreeze( number ) | entity:propNotSolid( number ) | entity:setAng( angle ) | entity:setColor( vector4 ) | entity:setPos( vector )
-    error( "Can not continue due propcore extension is not installed/enabled on this server." )
+    error( "SpyCam: Can not continue due propcore extension is not installed/enabled on this server." )
 #endif
 
     #
-    # Compares local version with server version.
+    # Compares local version with server version number (format is "MAJOR.MINOR.PATCH").
+    # Returns INVALID_VERSION_NUMBER when called with invalid arguments or when local major/minor/patch is greater than server major/minor/patch.
+    # Returns MAJOR_AVAILABLE when local major < server major. Returns MINOR_AVAILABLE when local minor < server minor. Returns PATCH_AVAILABLE when local patch < server patch.
     #
     function number compareVersion( Local:string, Server:string )
     {
@@ -60,32 +63,48 @@ if ( first() )
         local ServerVersion = Server:match( VersionPattern )
         if ( LocalVersion:count() != 3 | ServerVersion:count() != 3 )
         {
-            return -1 # Received invalid input.
+            # Received invalid input.
+            return INVALID_VERSION_NUMBER
         }
         local LocalMajor = LocalVersion[ 1, string ]:toNumber()
         local ServerMajor = ServerVersion[ 1, string ]:toNumber()
         if ( LocalMajor < ServerMajor )
         {
+            # Major version differs.
             return MAJOR_AVAILABLE
         }
-        if ( LocalMajor >= ServerMajor )
+        if ( LocalMajor > ServerMajor )
         {
-            return NO_UPDATE_AVAILABLE
+            # Local major should not go above server major.
+            return INVALID_VERSION_NUMBER
         }
+        # Major is up-to-date. Check minor number.
         local LocalMinor = LocalVersion[ 2, string ]:toNumber()
         local ServerMinor = ServerVersion[ 2, string ]:toNumber()
         if ( LocalMinor < ServerMinor )
         {
+            # Minor version differs.
             return MINOR_AVAILABLE
         }
-        if ( LocalMinor >= ServerMinor )
+        if ( LocalMinor > ServerMinor )
         {
-            return NO_UPDATE_AVAILABLE
+            # Local minor should not go above server minor.
+            return INVALID_VERSION_NUMBER
         }
-        if ( LocalVersion[ 3, string ]:toNumber() < ServerVersion[ 3, string ]:toNumber() )
+        local LocalPatch = LocalVersion[ 3, string ]:toNumber()
+        local ServerPatch = ServerVersion[ 3, string ]:toNumber()
+        # Major and minor are up-to-date. Check patch number.
+        if ( LocalPatch < ServerPatch )
         {
+            # Patch version differs.
             return PATCH_AVAILABLE
         }
+        if ( LocalPatch > ServerPatch )
+        {
+            # Local patch should not go above server patch.
+            return INVALID_VERSION_NUMBER
+        }
+        # Local is up-to-date with server.
         return NO_UPDATE_AVAILABLE
     }
 
@@ -109,6 +128,9 @@ if ( first() )
             case NO_UPDATE_AVAILABLE,
                 UpdateMessage = format( "SpyCam v%s: No newer updates available, you are running the most recent SpyCam :)", VersionString )
                 break
+            case INVALID_VERSION_NUMBER,
+                error( "SpyCam: Running on invalid version number (local version is out-of-sync)!" )
+                break
             default,
                 error( format( "SpyCam v%s: Unhandled response code in fetchNewUpdate function (code=%s)!", VersionString, ResponseCode ) )
                 break
@@ -122,7 +144,7 @@ if ( first() )
     }
 
     #
-    # Checks if specified Steam ID is valid Steam2 identifier (STEAM_0).
+    # Checks if supplied string is valid Steam2 identifier (STEAM_0).
     #
     function number isValidSteamId( SteamId:string )
     {
@@ -130,7 +152,7 @@ if ( first() )
     }
 
     #
-    # Attempts to find a player with specified Steam ID.
+    # Attempts to find a player with supplied Steam ID string.
     #
     function entity findPlayerBySteamId( SteamId:string )
     {
@@ -269,7 +291,7 @@ if ( first() )
     Screen = propSpawn( "models/props_phx/rt_screen.mdl", entity():pos() + ( entity():forward() * vec( 23.5 ) ), Ang, 1 )
     if ( !Screen:isValid() )
     {
-        error( "Can not continue due RT screen failed to spawn." )
+        error( "SpyCam: Can not continue due RT screen failed to spawn." )
     }
     Screen:parentTo( entity() )
     Screen:propNotSolid( 1 )
@@ -292,7 +314,7 @@ elseif ( chatClk( owner() ) )
             local ReturnCode = SPY_INVALID_TARGET
             if ( Trim:length() > 1 )
             {
-                # Optional argument is not empty. Check input against Steam2 ID first.
+                # Optional argument is not empty. Check input against Steam2 ID.
                 ReturnCode = trySetTarget( findPlayerBySteamId( Trim ) )
                 if ( ReturnCode == SPY_INVALID_TARGET )
                 {
@@ -334,6 +356,9 @@ elseif ( fileClk( VersionFilePath ) )
                     print( format( "SpyCam v%s: Successfully upgraded to v%s!", ReadVersionString, VersionString ) )
                     break
                 case NO_UPDATE_AVAILABLE,
+                    break
+                case INVALID_VERSION_NUMBER,
+                    error( "SpyCam: Invalid version number returned from compareVersion function!" )
                     break
                 default,
                     error( format( "SpyCam v%s: Unhandled response returned from compareVersion function (code=%s)!", VersionString, ResponseCode ) )
