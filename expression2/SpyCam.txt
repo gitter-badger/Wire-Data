@@ -11,13 +11,14 @@
 #   Save this text file to GarrysMod/garrysmod/data/expression2 folder.
 #   Requires Wire and Unofficial Wire Extras (UWSVN) addons to be installed; otherwise this won't work.
 #   Spawn this E2 code, then spawn a render target (RT) camera (from Wire - Extras). Using Wire Advanced tool, wire "Camera [ENTITY]" input from Expression 2 to RT camera's "Create Entity [ENTITY]" (entity) output.
-#   By default, it will target/spy on You. To change the target player, open chatbox and say "spy X" (without double-quotes), where X is optional argument/parameter that takes Steam ID. To get Steam ID of player, open (Developer) Console (make sure you have enabled it in Options first) and submit "status" command.
-#   If you do not specify a player's Steam ID to "spy" chat-command, it will make an additional check if you are aiming on a valid player, if so it will target that player; otherwise you will get an error message describing what went wrong - it is user-friendly.
+#   By default (when spawned), it will target/spy on You. To change the target player, open chatbox and say "spy X" (without double-quotes, case-insensitive), where X is optional argument/parameter that takes either player Steam ID or nick/name. To get list of Steam IDs (of all players on the current server), open (Developer) Console (make sure you have enabled it in Options first) and submit "status" command.
+#   If you do not specify a valid player Steam ID nor nick/name to "spy" chat-command, it will make an additional check if you are aiming on a valid player (if you are aiming on a vehicle, it will get the driver), if valid target was found it will spy on that player and notify you about it; otherwise you will get an error message describing what went wrong (it is user-friendly).
 #
 #  Forum thread URL: http://www.wiremod.com/forum/finished-contraptions/35243-spycam-e2-first-public-e2-release.html
 #  Repository URL: https://github.com/CaptainPRICE/Wire-Data
 #  Contributions/forks are welcome, looking for tweaks/optimizations!
 #  There are a few known bugs which can not be fixed using Expression 2.
+#  This E2 uses object-oriented programming style. Personally I think this is one decent E2 for beginners to learn from.
 #  I hope everybody will enjoy and also learn something new from this E2! :)
 #  Happy spying, CaptainPRICE.
 #  P.S. I have integrated auto-updater, so you don't have to check for updates manually!
@@ -25,22 +26,26 @@
 
 @name SpyCam
 @inputs Camera:entity
-@persist Version:array Screen:entity [MAJOR_AVAILABLE MINOR_AVAILABLE NO_UPDATE_AVAILABLE PATCH_AVAILABLE] [ServerFileURL VersionFilePath VersionPattern VersionTextFileURL]:string CameraWL:wirelink
+@persist Version:array Screen:entity [MAJOR_AVAILABLE MINOR_AVAILABLE NO_UPDATE_AVAILABLE PATCH_AVAILABLE SPY_INVALID_TARGET SPY_NEW_TARGET SPY_SAME_TARGET] [ServerFileURL Steam2IdentifierPattern VersionFilePath VersionPattern VersionTextFileURL]:string CameraWL:wirelink
 @outputs Target:entity VersionString:string
 
 if ( first() )
 {
     # Constant definitions.
-    Version = array( 2, 0, 1 )
+    Version = array( 2, 1, 0 )
     VersionPattern = "^(%d+)%.(%d+)%.(%d+)$"
     VersionString = Version:concat( "." )
     VersionFilePath = "updates/spycam/version.txt"
     VersionTextFileURL = "https://raw.githubusercontent.com/CaptainPRICE/Wire-Data/master/e2files/updates/spycam/version.txt"
     ServerFileURL = "https://raw.githubusercontent.com/CaptainPRICE/Wire-Data/master/expression2/SpyCam.txt"
+    Steam2IdentifierPattern = "^STEAM_0:[0|1]:[0-9]+$"
     MAJOR_AVAILABLE = 3
     MINOR_AVAILABLE = 2
     PATCH_AVAILABLE = 1
     NO_UPDATE_AVAILABLE = 0
+    SPY_INVALID_TARGET = -1
+    SPY_SAME_TARGET = 0
+    SPY_NEW_TARGET = 1
 
 #ifndef propCanCreate() | propSpawnEffect( number ) | propSpawnUndo( number ) | propSpawn( string, vector, angle, number ) | entity:parentTo( entity ) | entity:propDelete() | entity:propFreeze( number ) | entity:propNotSolid( number ) | entity:setAng( angle ) | entity:setColor( vector4 ) | entity:setPos( vector )
     error( "Can not continue due propcore extension is not installed/enabled on this server." )
@@ -117,11 +122,23 @@ if ( first() )
     }
 
     #
+    # Checks if specified Steam ID is valid Steam2 identifier (STEAM_0).
+    #
+    function number isValidSteamId( SteamId:string )
+    {
+        return SteamId:match( Steam2IdentifierPattern ):count() == 1
+    }
+
+    #
     # Attempts to find a player with specified Steam ID.
     #
     function entity findPlayerBySteamId( SteamId:string )
     {
-        # TODO: Validate SteamId.
+        SteamId = SteamId:upper()
+        if ( !isValidSteamId( SteamId ) )
+        {
+            return noentity()
+        }
         foreach ( K, Player:entity = players() )
         {
             if ( Player:steamID() == SteamId )
@@ -133,20 +150,77 @@ if ( first() )
     }
 
     #
+    # Attempts to find a player by (partial) name.
+    #
+    function entity findPlayerByPartialName( Name:string )
+    {
+        return findPlayerByName( Name )
+    }
+
+    #
+    # Returns 1 when Camera input is wired to a valid RT camera entity/object; otherwise 0.
+    #
+    function number isCameraValid()
+    {
+        return ->Camera & Camera:isValid() & Camera:type() == "gmod_wire_rtcam"
+    }
+
+    #
     # Attempts to set the new target player to spy on.
     #
     function number trySetTarget( NewTarget:entity )
     {
-        if ( !NewTarget:isValid() | !NewTarget:isPlayer() )
+        if ( !NewTarget:isValid() )
         {
-            return 0
+            return SPY_INVALID_TARGET
+        }
+        if ( NewTarget:isVehicle() )
+        {
+            return trySetTarget( NewTarget:driver() )
+        }
+        if ( !NewTarget:isPlayer() )
+        {
+            return SPY_INVALID_TARGET
         }
         if ( NewTarget == Target )
         {
-            return -1
+            return SPY_SAME_TARGET
         }
         Target = NewTarget
-        return 1
+        return SPY_NEW_TARGET
+    }
+
+    #
+    # Event handler that runs whenever the target is changed.
+    #
+    function onNewTargetEventHandler()
+    {
+        print( format( "SpyCam v%s: Now spying on (%s) %s.", VersionString, Target:steamID(), Target:name() ) )
+        soundPlay( "newtargetsound", soundDuration( "Buttons.snd19" ), "Buttons.snd19" )
+    }
+
+    #
+    # Callback function for "spy" chat-command that runs after trySetTarget function (used to announce the new target).
+    #
+    function announceSetTarget( ReturnCode:number )
+    {
+        switch ( ReturnCode )
+        {
+            case SPY_INVALID_TARGET,
+                print( format( "SpyCam v%s: Invalid syntax provided/Could not find a valid target (correct syntax: 'spy <player Steam ID>' or aim on player and say 'spy' to spy on that player).", VersionString ) )
+                soundPlay( "invalidsyntaxsound", soundDuration( "Buttons.snd10" ), "Buttons.snd10" )
+                break
+            case SPY_SAME_TARGET,
+                print( format( "SpyCam v%s: Already spying on (%s) %s.", VersionString, Target:steamID(), Target:name() ) )
+                soundPlay( "alreadyspyingsound", soundDuration( "Buttons.snd2" ), "Buttons.snd2" )
+                break
+            case SPY_NEW_TARGET,
+                onNewTargetEventHandler()
+                break
+            default,
+                error( format( "SpyCam v%s: Unsupported return code passed to announceSetTarget function (code=%s)!", VersionString, ReturnCode ) )
+                break
+        }
     }
 
     #
@@ -214,32 +288,24 @@ elseif ( chatClk( owner() ) )
         case "spy",
             hideChat( 1 )
             Exploded:removeString( 1 )
-            Trim = Exploded:concat( " " )
-            if ( trySetTarget( findPlayerBySteamId( Trim:trim() ) ) )
+            Trim = Exploded:concat( " " ):trim()
+            local ReturnCode = SPY_INVALID_TARGET
+            if ( Trim:length() > 1 )
             {
-                print( format( "SpyCam v%s: Now spying on (%s) %s.", VersionString, Target:steamID(), Target:name() ) )
-                break
+                # Optional argument is not empty. Check input against Steam2 ID first.
+                ReturnCode = trySetTarget( findPlayerBySteamId( Trim ) )
+                if ( ReturnCode == SPY_INVALID_TARGET )
+                {
+                    # Input is not a valid Steam2 ID? Find a player by (partial) nick/name.
+                    ReturnCode = trySetTarget( findPlayerByPartialName( Trim ) )
+                }
             }
-            local ResultCode = trySetTarget( owner():aimEntity() )
-            switch ( ResultCode )
+            if ( ReturnCode == SPY_INVALID_TARGET )
             {
-                case -1,
-                    print( format( "SpyCam v%s: Already spying on (%s) %s.", VersionString, Target:steamID(), Target:name() ) )
-                    break
-                case 0,
-                    print( format( "SpyCam v%s: Invalid syntax provided/Could not find a valid target (correct syntax: 'spy <player Steam ID>' or aim on player and say 'spy' to spy on that player).", VersionString ) )
-                    break
-                case 1,
-                    print( format( "SpyCam v%s: Now spying on (%s) %s.", VersionString, Target:steamID(), Target:name() ) )
-                    break
-                default,
-                    error( format( "SpyCam v%s: Unsupported result code returned from trySetTarget function (code=%s)!", VersionString, ResultCode ) )
-                    break
+                # Still invalid target? Check aim entity.
+                ReturnCode = trySetTarget( owner():aimEntity() )
             }
-            # TODO:
-            #  Detect whether an argument/parameter (first one) passed is valid Steam identifier.
-            #  Implement search by player (partial) name. Note, Steam ID should have higher precedence than search by nick/name.
-            #  Play sound after print.
+            announceSetTarget( ReturnCode ) # Run the callback function.
             break
     }
 }
@@ -325,13 +391,13 @@ elseif ( clk( "installnewupdate" ) )
 }
 elseif ( last() )
 {
-    if ( ->Camera & Camera:isValid() & Camera:type() == "gmod_wire_rtcam" )
+    if ( isCameraValid() )
     {
         Camera:propDelete()
     }
     exit()
 }
-if ( !->Camera | !Camera:isValid() | Camera:type() != "gmod_wire_rtcam" )
+if ( !isCameraValid() )
 {
     setName( format( "SpyCam (version %s)\nTime now : %s", VersionString, timeNow() ) )
     exit()
