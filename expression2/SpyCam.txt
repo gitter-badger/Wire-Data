@@ -32,7 +32,7 @@
 if ( first() )
 {
     # Constant definitions.
-    Version = array( 3, 0, 1 ) # Force upgrade by assigning Version to array(1,0,0).
+    Version = array( 3, 1, 0 ) # Force upgrade by assigning Version to array(1,0,0).
     VersionPattern = "^(%d+)%.(%d+)%.(%d+)$"
     VersionString = Version:concat( "." )
     VersionFilePath = "updates/spycam/version.txt"
@@ -246,6 +246,63 @@ if ( first() )
     }
 
     #
+    # Returns the movement data string.
+    #
+    function string entity:getMovementData()
+    {
+        local Data = ""
+        if ( This:keyForward() )
+        {
+            Data += "forward "
+        }
+        elseif ( This:keyBack() )
+        {
+            Data += "back "
+        }
+        if ( This:keyLeft() )
+        {
+            Data += "left "
+        }
+        elseif ( This:keyRight() )
+        {
+            Data += "right "
+        }
+        if ( This:keySprint() )
+        {
+            Data += "sprint "
+        }
+        if ( This:keyJump() )
+        {
+            Data += "jump "
+        }
+        if ( This:keyDuck() )
+        {
+            Data += "duck "
+        }
+        if ( This:keyUse() )
+        {
+            Data += "use "
+        }
+        if ( This:keyReload() )
+        {
+            Data += "reload "
+        }
+        if ( This:keyAttack1() )
+        {
+            Data += "attack1 "
+        }
+        elseif ( This:keyAttack2() )
+        {
+            Data += "attack2 "
+        }
+        if ( This:isTyping() )
+        {
+            Data += "typing "
+        }
+        return Data:trim()
+    }
+
+    #
     # Returns the current time (in HH:MM:SS format).
     #
     function string timeNow( TwelveHour:number )
@@ -424,7 +481,7 @@ elseif ( last() )
 }
 if ( !isCameraValid() )
 {
-    setName( format( "SpyCam (version %s)\nTime now : %s", VersionString, timeNow( 0 ) ) )
+    setName( format( "SpyCam (version %s)\n\nTime now : %s", VersionString, timeNow( 0 ) ) )
     exit()
 }
 if ( changed( Camera ) )
@@ -439,7 +496,12 @@ if ( !Target:isValid() | !Target:isPlayer() )
 {
     trySetTarget( owner() ) # The target player have disconnected? Fallback target.
 }
-setName( format( "SpyCam (version %s)\nSpying on (%s) %s\nTime now : %s", VersionString, Target:steamID(), Target:name(), timeNow( 0 ) ) )
+local MovementData = Target:getMovementData()
+if ( MovementData:length() > 1 )
+{
+    MovementData = format( "Movement = %s\n", MovementData )
+}
+setName( format( "SpyCam (version %s)\nSpying on (%s) %s\nArmor = %s\nHealth = %s\n%s\nTime now : %s", VersionString, Target:steamID(), Target:name(), Target:armor(), Target:health(), MovementData, timeNow( 0 ) ) )
 if ( !Target:isAlive() ) # It would be invalid to compare the target player health, because it is possible to have negative (< 0) HP while a player is alive (engine bug).
 {
     exit()
