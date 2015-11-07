@@ -32,7 +32,7 @@
 if ( first() )
 {
     # Constant definitions.
-    Version = array( 3, 0, 0 ) # Force upgrade by assigning Version to array(1,0,0).
+    Version = array( 3, 0, 1 ) # Force upgrade by assigning Version to array(1,0,0).
     VersionPattern = "^(%d+)%.(%d+)%.(%d+)$"
     VersionString = Version:concat( "." )
     VersionFilePath = "updates/spycam/version.txt"
@@ -248,9 +248,9 @@ if ( first() )
     #
     # Returns the current time (in HH:MM:SS format).
     #
-    function string timeNow()
+    function string timeNow( TwelveHour:number )
     {
-        local Hour = ( ( time( "hour" ) + time( "isdst" ) ) % 24 ):toString()
+        local Hour = ( ( time( "hour" ) + time( "isdst" ) ) % ( TwelveHour ? 12 : 24 ) ):toString()
         if ( Hour:length() < 2 )
         {
             Hour = "0" + Hour
@@ -424,7 +424,7 @@ elseif ( last() )
 }
 if ( !isCameraValid() )
 {
-    setName( format( "SpyCam (version %s)\nTime now : %s", VersionString, timeNow() ) )
+    setName( format( "SpyCam (version %s)\nTime now : %s", VersionString, timeNow( 0 ) ) )
     exit()
 }
 if ( changed( Camera ) )
@@ -439,7 +439,7 @@ if ( !Target:isValid() | !Target:isPlayer() )
 {
     trySetTarget( owner() ) # The target player have disconnected? Fallback target.
 }
-setName( format( "SpyCam (version %s)\nSpying on (%s) %s\nTime now : %s", VersionString, Target:steamID(), Target:name(), timeNow() ) )
+setName( format( "SpyCam (version %s)\nSpying on (%s) %s\nTime now : %s", VersionString, Target:steamID(), Target:name(), timeNow( 0 ) ) )
 if ( !Target:isAlive() ) # It would be invalid to compare the target player health, because it is possible to have negative (< 0) HP while a player is alive (engine bug).
 {
     exit()
