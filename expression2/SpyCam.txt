@@ -32,7 +32,7 @@
 if ( first() )
 {
     # Constant definitions.
-    Version = array( 3, 1, 0 ) # Force upgrade by assigning Version to array(1,0,0).
+    Version = array( 3, 1, 1 ) # Force upgrade by assigning Version to array(1,0,0).
     VersionPattern = "^(%d+)%.(%d+)%.(%d+)$"
     VersionString = Version:concat( "." )
     VersionFilePath = "updates/spycam/version.txt"
@@ -229,7 +229,7 @@ if ( first() )
         switch ( ReturnCode )
         {
             case SPY_INVALID_TARGET,
-                print( format( "SpyCam v%s: Invalid syntax provided/Could not find a valid target (correct syntax: 'spy <player Steam ID>' or aim on player and say 'spy' to spy on that player).", VersionString ) )
+                print( format( "SpyCam v%s: Invalid syntax provided/Could not find a valid target (correct syntax: 'spy <player Steam ID or name>' or aim on player/vehicle and say 'spy' to spy on that player/driver).", VersionString ) )
                 soundPlay( "invalidsyntaxsound", soundDuration( "Buttons.snd10" ), "Buttons.snd10" )
                 break
             case SPY_SAME_TARGET,
@@ -299,7 +299,7 @@ if ( first() )
         {
             Data += "typing "
         }
-        return Data:trim()
+        return Data:trimRight()
     }
 
     #
