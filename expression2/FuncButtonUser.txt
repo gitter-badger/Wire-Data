@@ -1,0 +1,61 @@
+#
+# DO NOT MODIFY OR REMOVE THIS HEADER!
+#
+# CREDITS/CONTRIBUTORS:
+#   Originally developed and maintained by STEAM_0:0:65979910 (http://steamcommunity.com/profiles/76561198092225548/ - STEAM_0:0:65979910; U:1:131959820); TheCaptainPrice a.k.a. CaptainPRICE.
+#   Special thanks to STEAM_0:1:5597822 (http://steamcommunity.com/profiles/76561198072222169/ - STEAM_0:1:5597822; U:1:11195645); DerPole for giving me a free ride and idea for such E2.
+#
+# INSTALLATION / SETUP:
+#   Requires Wire installed and "propcore" Expression 2 extension enabled on the server!
+#   Spawn a Wire User (with range set to ~20), then spawn this E2. Wire "User [ENTITY]" input from E2 to "Create Entity [ENTITY]" (entity) output on the Wire User.
+#
+# DESCRIPTION:
+#   Allows you to switch/use the closest 'func_button' entity while driving a vehicle using G key.
+#
+# Repository URL: https://github.com/CaptainPRICE/Wire-Data
+# This is very simple E2, most of it is self explanatory; nothing special about it.
+# Have fun, drive like a boss without the need to exit the vehicle in order to switch/use 'func_button' entities!
+#
+
+@name FuncButtonUser
+@inputs User:entity
+@outputs G
+@persist UserWL:wirelink
+
+if ( first() )
+{
+#ifndef entity:propFreeze( number ) | entity:setAng( angle ) | entity:setPos( vector )
+    error( "Can not continue due propcore extension is not enabled on this server." )
+#endif
+    runOnKeys( owner(), 1 )
+    runOnTick( 1 )
+}
+if ( !->User | !User:isValid() | User:type() != "gmod_wire_user" )
+{
+    exit()
+}
+if ( changed( User ) )
+{
+    UserWL = User:wirelink()
+}
+UserWL[ "Fire", number ] = 0
+if ( !keyClk() | keyClkPressed() != "g" | !findCanQuery() | owner():isTyping() | !owner():isAlive() | !owner():inVehicle() )
+{
+    exit()
+}
+G = !G
+if ( G )
+{
+    exit()
+}
+findByClass( "func_button" )
+findSortByDistance( owner():vehicle():pos() )
+local FuncButton = findResult( 1 )
+if ( !FuncButton:isValid() )
+{
+    exit()
+}
+UserWL[ "Fire", number ] = 1
+User:propFreeze( 1 )
+User:setAng( ang( 0, 0, -180 ) )
+User:setPos( FuncButton:boxCenterW() + ( FuncButton:up() * 10 ) )
