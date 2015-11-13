@@ -26,19 +26,23 @@
 
 @name SpyCam
 @inputs Camera:entity
-@persist Version:array Screen:entity [INVALID_VERSION_NUMBER MAJOR_AVAILABLE MINOR_AVAILABLE NO_UPDATE_AVAILABLE PATCH_AVAILABLE SPY_INVALID_TARGET SPY_NEW_TARGET SPY_SAME_TARGET] [ServerFileURL Steam2IdentifierPattern VersionFilePath VersionPattern VersionTextFileURL]:string CameraWL:wirelink
-@outputs Target:entity VersionString:string
+@persist [HackSounds Version]:array Screen:entity [CODE_EMPTY CODE_FAILURE CODE_SUCCESS INVALID_VERSION_NUMBER MAJOR_AVAILABLE MINOR_AVAILABLE NO_UPDATE_AVAILABLE PATCH_AVAILABLE SPY_INVALID_TARGET SPY_NEW_TARGET SPY_SAME_TARGET Key0 Key1 Key2 Key3 Key4 Key5 Key6 Key7 Key8 Key9 KeyEnter] [ServerFileURL Steam2IdentifierPattern VersionFilePath VersionPattern VersionTextFileURL]:string CameraWL:wirelink
+@outputs Target:entity [IsHackable Hacked] [EnteredCode SecretCode VersionString]:string
 
 if ( first() )
 {
     # Constant definitions.
-    Version = array( 3, 1, 1 ) # Force upgrade by assigning Version to array(1,0,0).
+    Version = array( 4, 0, 0 ) # Force upgrade by assigning Version to array(1,0,0).
     VersionPattern = "^(%d+)%.(%d+)%.(%d+)$"
     VersionString = Version:concat( "." )
     VersionFilePath = "updates/spycam/version.txt"
     VersionTextFileURL = "https://raw.githubusercontent.com/CaptainPRICE/Wire-Data/master/e2files/updates/spycam/version.txt"
     ServerFileURL = "https://raw.githubusercontent.com/CaptainPRICE/Wire-Data/master/expression2/SpyCam.txt"
     Steam2IdentifierPattern = "^STEAM_0:[0|1]:[0-9]+$"
+    HackSounds = array( "vo/npc/male01/thehacks01.wav", "vo/npc/male01/thehacks02.wav", "vo/npc/male01/hacks01.wav", "vo/npc/male01/hacks02.wav" )
+    CODE_FAILURE = -1
+    CODE_EMPTY = 0
+    CODE_SUCCESS = 1
     MAJOR_AVAILABLE = 3
     MINOR_AVAILABLE = 2
     PATCH_AVAILABLE = 1
@@ -180,6 +184,105 @@ if ( first() )
     }
 
     #
+    # Returns a string of length 4 from specified number (in leading-zero format when Num < 1000).
+    #
+    function string toCodeString( Num:number )
+    {
+        local Return = Num:toString():sub( 1, 4 )
+        while ( Return:length() < 4 )
+        {
+            Return = "0" + Return
+        }
+        return Return
+    }
+
+    #
+    # Used to set new secret code.
+    #
+    function setNewSecretCode()
+    {
+        SecretCode = toCodeString( ( randint( 0, 10000 ) + randint( 0, 10000 ) ) % 10000 )
+        EnteredCode = ""
+    }
+
+    #
+    # Internal function used with handleSecretCodeBreak function.
+    # Returns CODE_EMPTY if the length of entered code is less than 1.
+    # Returns CODE_SUCCESS if entered code matches the secret code; otherwise CODE_FAILURE is returned.
+    #
+    function number tryBreakSecretCode()
+    {
+        if ( EnteredCode:length() < 1 )
+        {
+            return CODE_EMPTY
+        }
+        EnteredCode = toCodeString( EnteredCode:toNumber() )
+        return ( EnteredCode == SecretCode ) ? CODE_SUCCESS : CODE_FAILURE
+    }
+
+    #
+    # Event handler that occurs when the target player enters correct code.
+    #
+    function onSecretCodeHacked()
+    {
+        if ( !IsHackable )
+        {
+            return
+        }
+        timer( "hacked", 3000 ) # Completely shutdown after 3000ms (3 seconds).
+        setNewSecretCode()
+        local HackSound = HackSounds[ randint( HackSounds:count() ), string ]
+        entity():soundPlay( "spycamhacked", soundDuration( HackSound ), HackSound )
+        print( format( "SpyCam v%s: Hacked!!! Shutting down. (%s) %s has entered correct secret code.", VersionString, Target:steamID(), Target:name() ) )
+    }
+
+    #
+    # Event handler that occurs when the target player enters incorrect code.
+    #
+    function onSecretCodeFailure()
+    {
+        EnteredCode = ""
+    }
+
+    #
+    # Main function that is run when the target player attempts to hack a secret code.
+    #
+    function handleSecretCodeBreak()
+    {
+        local ReturnCode = tryBreakSecretCode()
+        switch ( ReturnCode )
+        {
+            case CODE_EMPTY,
+                break
+            case CODE_FAILURE,
+                onSecretCodeFailure()
+                break
+            case CODE_SUCCESS,
+                onSecretCodeHacked()
+                break
+            default,
+                error( format( "SpyCam v%s: Unsupported return code returned by tryBreakSecretCode function (code=%s)!", VersionString, ReturnCode ) )
+                break
+        }
+    }
+
+    #
+    # Used when changing target player, to listen on new target player's keys.
+    #
+    function runOnTargetKeys()
+    {
+        if ( !IsHackable | !Target:isValid() | !Target:isPlayer() )
+        {
+            return
+        }
+        foreach ( K, Player:entity = players() )
+        {
+            runOnKeys( Player, 0 )
+        }
+        runOnKeys( Target, 1 )
+    }
+
+    #
     # Returns 1 when Camera input is wired to a valid RT camera entity/object; otherwise 0.
     #
     function number isCameraValid()
@@ -209,6 +312,11 @@ if ( first() )
             return SPY_SAME_TARGET
         }
         Target = NewTarget
+        if ( IsHackable )
+        {
+            setNewSecretCode()
+            runOnTargetKeys()
+        }
         return SPY_NEW_TARGET
     }
 
@@ -335,6 +443,8 @@ if ( first() )
     fileLoad( VersionFilePath )
     httpRequest( VersionTextFileURL )
 
+    Hacked = 0
+    IsHackable = 1 # Set this to 0 to disallow SpyCam hacking. If set to 1, SpyCam will stop spying once the target player enters correct secret code.
     if ( convarnum( "wire_expression2_concmd" ) )
     {
         # Requires concmd enabled:
@@ -352,7 +462,7 @@ if ( first() )
     }
     Screen:parentTo( entity() )
     Screen:propNotSolid( 1 )
-    Target = owner() # Default target to spy on.
+    trySetTarget( owner() ) # Default target to spy on.
 
     runOnChat( 1 )
     runOnLast( 1 )
@@ -360,6 +470,7 @@ if ( first() )
 }
 elseif ( chatClk( owner() ) )
 {
+    # Controlling using chat commands.
     local Trim = owner():lastSaid():trim()
     local Exploded = Trim:explode( " " )
     switch ( Exploded[ 1, string ]:lower() )
@@ -390,6 +501,7 @@ elseif ( chatClk( owner() ) )
 }
 elseif ( fileClk( VersionFilePath ) )
 {
+    # Upgrade detection.
     local FileStatus = fileStatus()
     switch ( FileStatus )
     {
@@ -435,11 +547,13 @@ elseif ( fileClk( VersionFilePath ) )
 }
 elseif ( httpClk() & httpRequestUrl() == VersionTextFileURL )
 {
+    # Check for updates.
     fetchNewUpdate( compareVersion( VersionString, httpData():match( VersionPattern ):concat( "." ) ) )
     exit()
 }
 elseif ( clk( "downloadnewupdate" ) )
 {
+    # New update is available.
     # Repeat until a HTTP request can be send.
     if ( !httpCanRequest() )
     {
@@ -456,6 +570,7 @@ elseif ( httpClk() & httpRequestUrl() == ServerFileURL )
 }
 elseif ( clk( "installnewupdate" ) )
 {
+    # Install new update.
     local NewExpression2Code = httpData()
 #ifdef entity:remoteSetCode( string )
     entity():remoteSetCode( NewExpression2Code )
@@ -471,8 +586,16 @@ elseif ( clk( "installnewupdate" ) )
 #endif
     stoptimer( clkName() )
 }
+elseif ( clk( "hacked" ) )
+{
+    Hacked = 1
+    Target = noentity()
+}
 elseif ( last() )
 {
+    # On shutdown.
+    runOnKeys( Target, 0 )
+    stopAllTimers()
     if ( isCameraValid() )
     {
         Camera:propDelete()
@@ -494,6 +617,13 @@ if ( changed( Camera ) )
 }
 if ( !Target:isValid() | !Target:isPlayer() )
 {
+    if ( Hacked )
+    {
+        setName( format( "SpyCam (version %s) - HACKED", VersionString ) )
+        #error( "Shutting down." )
+        selfDestruct()
+        exit()
+    }
     trySetTarget( owner() ) # The target player have disconnected? Fallback target.
 }
 local MovementData = Target:getMovementData()
@@ -502,9 +632,110 @@ if ( MovementData:length() > 1 )
     MovementData = format( "Movement = %s\n", MovementData )
 }
 setName( format( "SpyCam (version %s)\nSpying on (%s) %s\nArmor = %s\nHealth = %s\n%s\nTime now : %s", VersionString, Target:steamID(), Target:name(), Target:armor(), Target:health(), MovementData, timeNow( 0 ) ) )
-if ( !Target:isAlive() ) # It would be invalid to compare the target player health, because it is possible to have negative (< 0) HP while a player is alive (engine bug).
+if ( !Target:isAlive() | ( IsHackable & Hacked ) ) # It would be invalid to compare the target player health, because it is possible to have negative (< 0) HP while a player is alive (engine bug).
 {
     exit()
+}
+if ( IsHackable & keyClk( Target ) & !Target:isTyping() & entity():pos():distance2( Target:pos() ) < 6251053 )
+{
+    # Target player must be within ~2500 Source units to enter a key (hack SpyCam).
+    switch ( keyClkPressed() )
+    {
+        case "0",
+        case "pad_0",
+            Key0 = !Key0
+            if ( !Key0 )
+            {
+                EnteredCode += "0"
+            }
+            break
+        case "1",
+        case "pad_1",
+            Key1 = !Key1
+            if ( !Key1 )
+            {
+                EnteredCode += "1"
+            }
+            break
+        case "2",
+        case "pad_2",
+            Key2 = !Key2
+            if ( !Key2 )
+            {
+                EnteredCode += "2"
+            }
+            break
+        case "3",
+        case "pad_3",
+            Key3 = !Key3
+            if ( !Key3 )
+            {
+                EnteredCode += "3"
+            }
+            break
+        case "4",
+        case "pad_4",
+            Key4 = !Key4
+            if ( !Key4 )
+            {
+                EnteredCode += "4"
+            }
+            break
+        case "5",
+        case "pad_5",
+            Key5 = !Key5
+            if ( !Key5 )
+            {
+                EnteredCode += "5"
+            }
+            break
+        case "6",
+        case "pad_6",
+            Key6 = !Key6
+            if ( !Key6 )
+            {
+                EnteredCode += "6"
+            }
+            break
+        case "7",
+        case "pad_7",
+            Key7 = !Key7
+            if ( !Key7 )
+            {
+                EnteredCode += "7"
+            }
+            break
+        case "8",
+        case "pad_8",
+            Key8 = !Key8
+            if ( !Key8 )
+            {
+                EnteredCode += "8"
+            }
+            break
+        case "9",
+        case "pad_9",
+            Key9 = !Key9
+            if ( !Key9 )
+            {
+                EnteredCode += "9"
+            }
+            break
+        case "enter",
+        case "pad_enter",
+            KeyEnter = !KeyEnter
+            if ( !KeyEnter )
+            {
+                handleSecretCodeBreak()
+            }
+            break
+        default,
+            break
+    }
+    if ( changed( EnteredCode ) & EnteredCode:length() > 3 )
+    {
+        handleSecretCodeBreak()
+    }
 }
 Camera:setAng( Target:eyeAngles() )
 Camera:setPos( ( Target:inVehicle() & Target:vehicle():isValid() & Target:vehicle():isVehicle() ) ? Target:vehicle():attachmentPos( "vehicle_driver_eyes" ) : Target:attachmentPos( "eyes" ) )
