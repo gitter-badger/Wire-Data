@@ -3,36 +3,51 @@
 #
 # CREDITS / CONTRIBUTORS:
 #   Originally created/developed and maintained by STEAM_0:0:65979910 (http://steamcommunity.com/profiles/76561198092225548/ - STEAM_0:0:65979910; U:1:131959820); TheCaptainPrice a.k.a. CaptainPRICE.
+#   Thanks to STEAM_0:1:45759946 for thirdperson suggestion (http://steamcommunity.com/profiles/76561198051785621/ - STEAM_0:1:45759946; U:1:91519893); Gaghr.
 #
 # LICENSE:
 #   GNU General Public License version 3.
 #
 # SETUP / INSTALLATION INSTRUCTIONS:
 #   Save this text file to GarrysMod/garrysmod/data/expression2 folder.
-#   Requires Wire and Unofficial Wire Extras (UWSVN) addons to be installed; otherwise this won't work.
+#   Requires Wire and Unofficial Wire Extras (UWSVN) addons to be installed and also "propcore" Expression 2 extension enabled on the server; otherwise this won't work.
 #   Spawn this E2 code, then spawn a render target (RT) camera (from Wire - Extras). Using Wire Advanced tool, wire "Camera [ENTITY]" input from Expression 2 to RT camera's "Create Entity [ENTITY]" (entity) output.
 #   By default (when spawned), it will target/spy on You. To change the target player, open chatbox and say "spy X" (without double-quotes, case-insensitive), where X is optional argument/parameter that takes either player Steam ID or nick/name. To get list of Steam IDs (of all players on the current server), open (Developer) Console (make sure you have enabled it in Options first) and submit "status" command.
 #   If you do not specify a valid player Steam ID nor nick/name to "spy" chat-command, it will make an additional check if you are aiming on a valid player (if you are aiming on a vehicle, it will get the driver), if valid target was found it will spy on that player and notify you about it; otherwise you will get an error message describing what went wrong (it is user-friendly).
+#   SpyCam can now be hacked/shutdown once the target player enters a correct secret code (remember to set/wire "IsHackable" input to 1 to enable this functionality).
+#   If you want SpyCam to automatically try to hack itself when the target player enters up to 4 digits (removes the need to hit enter/return key), then wire/set "AutoTryCode" input to 1.
+#   If you want to spy on the target player in thirdperson mode, then wire/set "Thirdperson" input to 1 (adjust position using ThirdpersonForwardOffset/ThirdpersonRightOffset/ThirdpersonUpOffset variables, see lines 58-60).
 #
 #  Forum thread URL: http://www.wiremod.com/forum/finished-contraptions/35243-spycam-e2-first-public-e2-release.html
 #  Repository URL: https://github.com/CaptainPRICE/Wire-Data
 #  Contributions/forks are welcome, looking for tweaks/optimizations!
 #  There are a few known bugs which can not be fixed using Expression 2.
 #  This E2 uses object-oriented programming style. Personally I think this is one decent E2 for beginners to learn from.
-#  I hope everybody will enjoy and also learn something new from this E2! :)
+#  I hope everybody will enjoy and also learn something new from this E2 (it is not just "spying")! :)
 #  Happy spying, CaptainPRICE.
-#  P.S. I have integrated auto-updater, so you don't have to check for updates manually!
+#  P.S. I have integrated auto-updater, so you don't have to check for updates manually (checks for updates once per upload)!
 #
 
 @name SpyCam
-@inputs Camera:entity
-@persist [HackSounds Version]:array Screen:entity [CODE_EMPTY CODE_FAILURE CODE_SUCCESS INVALID_VERSION_NUMBER MAJOR_AVAILABLE MINOR_AVAILABLE NO_UPDATE_AVAILABLE PATCH_AVAILABLE SPY_INVALID_TARGET SPY_NEW_TARGET SPY_SAME_TARGET Key0 Key1 Key2 Key3 Key4 Key5 Key6 Key7 Key8 Key9 KeyEnter] [ServerFileURL Steam2IdentifierPattern VersionFilePath VersionPattern VersionTextFileURL]:string CameraWL:wirelink
-@outputs Target:entity [IsHackable Hacked] [EnteredCode SecretCode VersionString]:string
+@inputs Camera:entity [AutoTryCode EnablePerformanceMode IsHackable Thirdperson]
+@persist [HackSounds Version]:array Screen:entity [CODE_EMPTY CODE_FAILURE CODE_SUCCESS INVALID_VERSION_NUMBER MAJOR_AVAILABLE MINOR_AVAILABLE NO_UPDATE_AVAILABLE PATCH_AVAILABLE SPY_INVALID_TARGET SPY_NEW_TARGET SPY_SAME_TARGET Key0 Key1 Key2 Key3 Key4 Key5 Key6 Key7 Key8 Key9 KeyEnter ThirdpersonForwardOffset ThirdpersonRightOffset ThirdpersonUpOffset] [ServerFileURL Steam2IdentifierPattern VersionFilePath VersionPattern VersionTextFileURL]:string CameraWL:wirelink
+@outputs Target:entity Hacked [EnteredCode SecretCode VersionString]:string
 
+# (Advanced) Duplicator support, the right way.
+if ( dupefinished() )
+{
+    exit()
+}
+if ( duped() )
+{
+    reset()
+}
+
+# This is where magic starts.
 if ( first() )
 {
     # Constant definitions.
-    Version = array( 4, 0, 0 ) # Force upgrade by assigning Version to array(1,0,0).
+    Version = array( 4, 1, 0 ) # Force upgrade by assigning Version to array(1,0,0).
     VersionPattern = "^(%d+)%.(%d+)%.(%d+)$"
     VersionString = Version:concat( "." )
     VersionFilePath = "updates/spycam/version.txt"
@@ -40,26 +55,36 @@ if ( first() )
     ServerFileURL = "https://raw.githubusercontent.com/CaptainPRICE/Wire-Data/master/expression2/SpyCam.txt"
     Steam2IdentifierPattern = "^STEAM_0:[0|1]:[0-9]+$"
     HackSounds = array( "vo/npc/male01/thehacks01.wav", "vo/npc/male01/thehacks02.wav", "vo/npc/male01/hacks01.wav", "vo/npc/male01/hacks02.wav" )
+    ThirdpersonForwardOffset = -130  # Forward offset (used for thirdperson). Negative number makes camera go backward (clamped at -/+1000).
+    ThirdpersonRightOffset   = 1     # Right offset (used for thirdperson). Negative number makes camera go left (clamped at -/+1000).
+    ThirdpersonUpOffset      = -15   # Up offset (used for thirdperson). Negative number makes camera go down (clamped at -/+1000).
+    # CODE enumeration (used by tryBreakSecretCode function):
     CODE_FAILURE = -1
     CODE_EMPTY = 0
     CODE_SUCCESS = 1
+    # Enumerations used by auto-updater feature:
     MAJOR_AVAILABLE = 3
     MINOR_AVAILABLE = 2
     PATCH_AVAILABLE = 1
     NO_UPDATE_AVAILABLE = 0
     INVALID_VERSION_NUMBER = -1
+    # SPY enumeration (used by trySetTarget function).
     SPY_INVALID_TARGET = -1
     SPY_SAME_TARGET = 0
     SPY_NEW_TARGET = 1
 
 #ifndef propCanCreate() | propSpawnEffect( number ) | propSpawnUndo( number ) | propSpawn( string, vector, angle, number ) | entity:parentTo( entity ) | entity:propDelete() | entity:propFreeze( number ) | entity:propNotSolid( number ) | entity:setAng( angle ) | entity:setColor( vector4 ) | entity:setPos( vector )
-    error( "SpyCam: Can not continue due propcore extension is not installed/enabled on this server." )
+    error( "SpyCam: Can not continue due propcore extension is not enabled on this server." )
 #endif
 
     #
+    # Based on real-world software versioning.
     # Compares local version with server version number (format is "MAJOR.MINOR.PATCH").
     # Returns INVALID_VERSION_NUMBER when called with invalid arguments or when local major/minor/patch is greater than server major/minor/patch.
-    # Returns MAJOR_AVAILABLE when local major < server major. Returns MINOR_AVAILABLE when local minor < server minor. Returns PATCH_AVAILABLE when local patch < server patch.
+    # Returns MAJOR_AVAILABLE when local major < server major.
+    # Returns MINOR_AVAILABLE when local minor < server minor.
+    # Returns PATCH_AVAILABLE when local patch < server patch.
+    # Returns NO_UPDATE_AVAILABLE when local version == server version.
     #
     function number compareVersion( Local:string, Server:string )
     {
@@ -176,7 +201,8 @@ if ( first() )
     }
 
     #
-    # Attempts to find a player by (partial) name.
+    # Attempts to find a player by (partial) nick/name.
+    # This function is just an alias to findPlayerByName function.
     #
     function entity findPlayerByPartialName( Name:string )
     {
@@ -197,11 +223,11 @@ if ( first() )
     }
 
     #
-    # Used to set new secret code.
+    # Used to set a new secret code.
     #
     function setNewSecretCode()
     {
-        SecretCode = toCodeString( ( randint( 0, 10000 ) + randint( 0, 10000 ) ) % 10000 )
+        SecretCode = ( ->IsHackable & IsHackable & !Hacked ) ? toCodeString( ( randint( 0, 10000 ) + randint( 0, 10000 ) ) % 10000 ) : ""
         EnteredCode = ""
     }
 
@@ -221,14 +247,10 @@ if ( first() )
     }
 
     #
-    # Event handler that occurs when the target player enters correct code.
+    # Event handler that occurs when the target player enters a correct secret code.
     #
     function onSecretCodeHacked()
     {
-        if ( !IsHackable )
-        {
-            return
-        }
         timer( "hacked", 3000 ) # Completely shutdown after 3000ms (3 seconds).
         setNewSecretCode()
         local HackSound = HackSounds[ randint( HackSounds:count() ), string ]
@@ -237,7 +259,7 @@ if ( first() )
     }
 
     #
-    # Event handler that occurs when the target player enters incorrect code.
+    # Event handler that occurs when the target player enters an incorrect secret code.
     #
     function onSecretCodeFailure()
     {
@@ -245,10 +267,14 @@ if ( first() )
     }
 
     #
-    # Main function that is run when the target player attempts to hack a secret code.
+    # Main function that is run when the target player attempts to hack a secret code (or shutdown SpyCam).
     #
     function handleSecretCodeBreak()
     {
+        if ( !->IsHackable | !IsHackable | Hacked )
+        {
+            return
+        }
         local ReturnCode = tryBreakSecretCode()
         switch ( ReturnCode )
         {
@@ -271,7 +297,7 @@ if ( first() )
     #
     function runOnTargetKeys()
     {
-        if ( !IsHackable | !Target:isValid() | !Target:isPlayer() )
+        if ( !->IsHackable | !IsHackable )
         {
             return
         }
@@ -279,11 +305,14 @@ if ( first() )
         {
             runOnKeys( Player, 0 )
         }
-        runOnKeys( Target, 1 )
+        if ( Target:isValid() & Target:isPlayer() )
+        {
+            runOnKeys( Target, 1 )
+        }
     }
 
     #
-    # Returns 1 when Camera input is wired to a valid RT camera entity/object; otherwise 0.
+    # Returns 1 when Camera input is wired to a valid render-target (RT) camera entity/object; otherwise 0.
     #
     function number isCameraValid()
     {
@@ -291,7 +320,11 @@ if ( first() )
     }
 
     #
-    # Attempts to set the new target player to spy on.
+    # Used as an argument "ReturnCode" with announceSetTarget function.
+    # Attempts to set the new target player to spy on (also generates a new secret code if hacking functionality is enabled).
+    # Returns SPY_INVALID_TARGET if NewTarget is not valid entity/object.
+    # Returns SPY_SAME_TARGET if NewTarget is the same entity as Target.
+    # Returns SPY_NEW_TARGET if Target was successful set to NewTarget.
     #
     function number trySetTarget( NewTarget:entity )
     {
@@ -312,16 +345,13 @@ if ( first() )
             return SPY_SAME_TARGET
         }
         Target = NewTarget
-        if ( IsHackable )
-        {
-            setNewSecretCode()
-            runOnTargetKeys()
-        }
+        setNewSecretCode()
+        runOnTargetKeys()
         return SPY_NEW_TARGET
     }
 
     #
-    # Event handler that runs whenever the target is changed.
+    # Event handler that occurs whenever the target is changed (run after trySetTarget function).
     #
     function onNewTargetEventHandler()
     {
@@ -443,8 +473,6 @@ if ( first() )
     fileLoad( VersionFilePath )
     httpRequest( VersionTextFileURL )
 
-    Hacked = 0
-    IsHackable = 1 # Set this to 0 to disallow SpyCam hacking. If set to 1, SpyCam will stop spying once the target player enters correct secret code.
     if ( convarnum( "wire_expression2_concmd" ) )
     {
         # Requires concmd enabled:
@@ -463,6 +491,9 @@ if ( first() )
     Screen:parentTo( entity() )
     Screen:propNotSolid( 1 )
     trySetTarget( owner() ) # Default target to spy on.
+    rangerPersist( 1 )
+    rangerFilter( Target )
+    rangerFlags( "e" ) # Hit entities and world.
 
     runOnChat( 1 )
     runOnLast( 1 )
@@ -560,7 +591,7 @@ elseif ( clk( "downloadnewupdate" ) )
         timer( clkName(), 100 )
         exit()
     }
-    # Get contents of the most recent Expression 2 text file.
+    # Get contents of the most recent Expression 2 text file from the server.
     httpRequest( ServerFileURL )
     stoptimer( clkName() )
 }
@@ -588,6 +619,7 @@ elseif ( clk( "installnewupdate" ) )
 }
 elseif ( clk( "hacked" ) )
 {
+    # On hacked (delayed callback).
     Hacked = 1
     Target = noentity()
 }
@@ -604,6 +636,10 @@ elseif ( last() )
 }
 if ( !isCameraValid() )
 {
+    if ( EnablePerformanceMode )
+    {
+        runOnTick( 0 )
+    }
     setName( format( "SpyCam (version %s)\n\nTime now : %s", VersionString, timeNow( 0 ) ) )
     exit()
 }
@@ -611,20 +647,32 @@ if ( changed( Camera ) )
 {
     Camera:propFreeze( 1 )
     Camera:propNotSolid( 1 )
+#ifdef entity:setNoCollideAll()
+    Camera:setNoCollideAll()
+#endif
     Camera:setColor( vec4( 255, 255, 255, 0 ) )
     CameraWL = Camera:wirelink()
     CameraWL[ "Activate", number ] = 1
+    if ( EnablePerformanceMode )
+    {
+        runOnTick( 1 )
+    }
 }
 if ( !Target:isValid() | !Target:isPlayer() )
 {
-    if ( Hacked )
+    if ( ->IsHackable & IsHackable & Hacked )
     {
-        setName( format( "SpyCam (version %s) - HACKED", VersionString ) )
+        #setName( format( "SpyCam (version %s) - HACKED", VersionString ) )
         #error( "Shutting down." )
         selfDestruct()
         exit()
     }
     trySetTarget( owner() ) # The target player have disconnected? Fallback target.
+}
+if ( changed( IsHackable ) )
+{
+    # Update secret code when "IsHackable" input changes.
+    setNewSecretCode()
 }
 local MovementData = Target:getMovementData()
 if ( MovementData:length() > 1 )
@@ -632,13 +680,13 @@ if ( MovementData:length() > 1 )
     MovementData = format( "Movement = %s\n", MovementData )
 }
 setName( format( "SpyCam (version %s)\nSpying on (%s) %s\nArmor = %s\nHealth = %s\n%s\nTime now : %s", VersionString, Target:steamID(), Target:name(), Target:armor(), Target:health(), MovementData, timeNow( 0 ) ) )
-if ( !Target:isAlive() | ( IsHackable & Hacked ) ) # It would be invalid to compare the target player health, because it is possible to have negative (< 0) HP while a player is alive (engine bug).
+if ( !Target:isAlive() | ( ->IsHackable & IsHackable & Hacked ) ) # It would be invalid to compare the target player health, because it is possible to have negative (< 0) HP while a player is alive (engine bug).
 {
     exit()
 }
-if ( IsHackable & keyClk( Target ) & !Target:isTyping() & entity():pos():distance2( Target:pos() ) < 6251053 )
+if ( ->IsHackable & IsHackable & keyClk( Target ) & !Target:isTyping() & entity():pos():distance2( Target:pos() ) < 6250000 )
 {
-    # Target player must be within ~2500 Source units to enter a key (hack SpyCam).
+    # Target player here is (valid) alive player, in range of 2500 Source/Hammer units and have chatbox closed to be able to enter a code (hack/shutdown SpyCam).
     switch ( keyClkPressed() )
     {
         case "0",
@@ -732,10 +780,27 @@ if ( IsHackable & keyClk( Target ) & !Target:isTyping() & entity():pos():distanc
         default,
             break
     }
-    if ( changed( EnteredCode ) & EnteredCode:length() > 3 )
+    if ( ->AutoTryCode & AutoTryCode & changed( EnteredCode ) & EnteredCode:length() > 3 )
     {
         handleSecretCodeBreak()
     }
 }
-Camera:setAng( Target:eyeAngles() )
-Camera:setPos( ( Target:inVehicle() & Target:vehicle():isValid() & Target:vehicle():isVehicle() ) ? Target:vehicle():attachmentPos( "vehicle_driver_eyes" ) : Target:attachmentPos( "eyes" ) )
+local EyesPosition = ( Target:inVehicle() & Target:vehicle():isValid() & Target:vehicle():isVehicle() ) ? Target:vehicle():attachmentPos( "vehicle_driver_eyes" ) : Target:attachmentPos( "eyes" )
+if ( ->Thirdperson & Thirdperson )
+{
+    # Third-person mode.
+    local Origin = EyesPosition + ( ( Target:forward() * clamp( ThirdpersonForwardOffset, -1000, 1000 ) ) + ( Target:right() * clamp( ThirdpersonRightOffset, -1000, 1000 ) ) + ( Target:up() * clamp( ThirdpersonUpOffset, -1000, 1000 ) ) )
+    local R = rangerOffset( EyesPosition, Origin )
+    if ( R:hit() & R:hitWorld() )
+    {
+        Origin = R:pos() + ( EyesPosition - R:pos() ):normalized() * 4
+    }
+    Camera:setAng( ( Target:aimPos() - Origin ):toAngle() )
+    Camera:setPos( Origin )
+}
+else
+{
+    # First-person mode.
+    Camera:setAng( Target:eyeAngles() )
+    Camera:setPos( EyesPosition )
+}
