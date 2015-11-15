@@ -47,7 +47,7 @@ if ( duped() )
 if ( first() )
 {
     # Constant definitions.
-    Version = array( 4, 1, 0 ) # Force upgrade by assigning Version to array(1,0,0).
+    Version = array( 4, 2, 0 ) # Force upgrade by assigning Version to array(1,0,0).
     VersionPattern = "^(%d+)%.(%d+)%.(%d+)$"
     VersionString = Version:concat( "." )
     VersionFilePath = "updates/spycam/version.txt"
@@ -320,6 +320,17 @@ if ( first() )
     }
 
     #
+    # Event handler that occurs whenever "IsHackable" input is changed.
+    #
+    function onIsHackableChanged()
+    {
+        # Update secret code.
+        setNewSecretCode()
+        # Start/stop listening on the target player keys.
+        runOnTargetKeys()
+    }
+
+    #
     # Used as an argument "ReturnCode" with announceSetTarget function.
     # Attempts to set the new target player to spy on (also generates a new secret code if hacking functionality is enabled).
     # Returns SPY_INVALID_TARGET if NewTarget is not valid entity/object.
@@ -345,8 +356,7 @@ if ( first() )
             return SPY_SAME_TARGET
         }
         Target = NewTarget
-        setNewSecretCode()
-        runOnTargetKeys()
+        onIsHackableChanged()
         return SPY_NEW_TARGET
     }
 
@@ -667,12 +677,11 @@ if ( !Target:isValid() | !Target:isPlayer() )
         selfDestruct()
         exit()
     }
-    trySetTarget( owner() ) # The target player have disconnected? Fallback target.
+    trySetTarget( owner() ) # The target player have disconnected? Fallback to valid target player.
 }
-if ( changed( IsHackable ) )
+elseif ( changed( IsHackable ) )
 {
-    # Update secret code when "IsHackable" input changes.
-    setNewSecretCode()
+    onIsHackableChanged()
 }
 local MovementData = Target:getMovementData()
 if ( MovementData:length() > 1 )
@@ -686,13 +695,14 @@ if ( !Target:isAlive() | ( ->IsHackable & IsHackable & Hacked ) ) # It would be 
 }
 if ( ->IsHackable & IsHackable & keyClk( Target ) & !Target:isTyping() & entity():pos():distance2( Target:pos() ) < 6250000 )
 {
-    # Target player here is (valid) alive player, in range of 2500 Source/Hammer units and have chatbox closed to be able to enter a code (hack/shutdown SpyCam).
+    # Allow the target player to enter key when alive, in range of 2500 Source/Hammer units (from E2) and has chatbox closed.
+    # Key handling (for hacking SpyCam).
     switch ( keyClkPressed() )
     {
         case "0",
         case "pad_0",
             Key0 = !Key0
-            if ( !Key0 )
+            if ( !Key0 & EnteredCode:length() < 4 )
             {
                 EnteredCode += "0"
             }
@@ -700,7 +710,7 @@ if ( ->IsHackable & IsHackable & keyClk( Target ) & !Target:isTyping() & entity(
         case "1",
         case "pad_1",
             Key1 = !Key1
-            if ( !Key1 )
+            if ( !Key1 & EnteredCode:length() < 4 )
             {
                 EnteredCode += "1"
             }
@@ -708,7 +718,7 @@ if ( ->IsHackable & IsHackable & keyClk( Target ) & !Target:isTyping() & entity(
         case "2",
         case "pad_2",
             Key2 = !Key2
-            if ( !Key2 )
+            if ( !Key2 & EnteredCode:length() < 4 )
             {
                 EnteredCode += "2"
             }
@@ -716,7 +726,7 @@ if ( ->IsHackable & IsHackable & keyClk( Target ) & !Target:isTyping() & entity(
         case "3",
         case "pad_3",
             Key3 = !Key3
-            if ( !Key3 )
+            if ( !Key3 & EnteredCode:length() < 4 )
             {
                 EnteredCode += "3"
             }
@@ -724,7 +734,7 @@ if ( ->IsHackable & IsHackable & keyClk( Target ) & !Target:isTyping() & entity(
         case "4",
         case "pad_4",
             Key4 = !Key4
-            if ( !Key4 )
+            if ( !Key4 & EnteredCode:length() < 4 )
             {
                 EnteredCode += "4"
             }
@@ -732,7 +742,7 @@ if ( ->IsHackable & IsHackable & keyClk( Target ) & !Target:isTyping() & entity(
         case "5",
         case "pad_5",
             Key5 = !Key5
-            if ( !Key5 )
+            if ( !Key5 & EnteredCode:length() < 4 )
             {
                 EnteredCode += "5"
             }
@@ -740,7 +750,7 @@ if ( ->IsHackable & IsHackable & keyClk( Target ) & !Target:isTyping() & entity(
         case "6",
         case "pad_6",
             Key6 = !Key6
-            if ( !Key6 )
+            if ( !Key6 & EnteredCode:length() < 4 )
             {
                 EnteredCode += "6"
             }
@@ -748,7 +758,7 @@ if ( ->IsHackable & IsHackable & keyClk( Target ) & !Target:isTyping() & entity(
         case "7",
         case "pad_7",
             Key7 = !Key7
-            if ( !Key7 )
+            if ( !Key7 & EnteredCode:length() < 4 )
             {
                 EnteredCode += "7"
             }
@@ -756,7 +766,7 @@ if ( ->IsHackable & IsHackable & keyClk( Target ) & !Target:isTyping() & entity(
         case "8",
         case "pad_8",
             Key8 = !Key8
-            if ( !Key8 )
+            if ( !Key8 & EnteredCode:length() < 4 )
             {
                 EnteredCode += "8"
             }
@@ -764,7 +774,7 @@ if ( ->IsHackable & IsHackable & keyClk( Target ) & !Target:isTyping() & entity(
         case "9",
         case "pad_9",
             Key9 = !Key9
-            if ( !Key9 )
+            if ( !Key9 & EnteredCode:length() < 4 )
             {
                 EnteredCode += "9"
             }
