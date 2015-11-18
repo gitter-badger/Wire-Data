@@ -3,6 +3,7 @@
 #
 # CREDITS/CONTRIBUTORS:
 #   Originally developed and maintained by STEAM_0:0:65979910 (http://steamcommunity.com/profiles/76561198092225548/ - STEAM_0:0:65979910; U:1:131959820); TheCaptainPrice a.k.a. CaptainPRICE.
+#   Chat parsing improvements by STEAM_0:0:9583907 (http://steamcommunity.com/profiles/76561197979433542/ - STEAM_0:0:9583907; U:1:19167814); Divran.
 #
 # LICENSE:
 #   GNU General Public License version 3.
@@ -15,13 +16,15 @@
 #   To unlock chair/seat, remove this E2 from it (or use chat command (case-insensitive): unlockchair <entity ID>).
 #   It is also possible to toggle current state using "togglechair" (case-insensitive) chat-command (but first aim on E2/chair or enter a chair/seat to toggle, notice this chat-command does not take any arguments).
 #   Good feature about this is, it works independently and allows multiple chairs to be controlled (just need to spawn a separate ChairLocker E2 on each).
-#   If you want chair/seat to remove when you remove E2, wire/set "ChairRemovalOnE2Remove" input to 1 (note: requires "propcore" extension enabled).
+#   To lock/unlock multiple vehicles using a single command, just separate entity IDs with comma (e.g. "unlockseat 123, 456, 1001" will try to unlock 3 vehicles at once, if something goes wrong you will be notified).
+#   This includes prop-protection support, so your buddies have access granted automatically (they can use chat commands, just like you and also you are able to see their Steam ID/nickname when they perform lock/unlock).
+#   If you want chair/seat to be automatically removed as you remove ChairLocker E2 from it, wire/set "ChairRemovalOnE2Remove" input to 1 (note: requires "propcore" extension enabled).
 #   If you want to automatically eject the driver (if any) when the vehicle gets locked, wire/set "EjectDriverOnLock" input to 1.
 #
 # Repository URL: https://github.com/CaptainPRICE/Wire-Data
 # For more details, please visit a thread on the forums: http://www.wiremod.com/forum/finished-contraptions/35272-easy-vehicle-locker-unlocker-e2.html
-# In this E2, I have implemented a bit more advanced chat-command parsing.
-# As always, have fun!
+# In this E2, I have implemented a bit more advanced chat-command parsing. Thanks to Divran for improvements.
+# I hope you will learn something new from it. As always, have fun!
 #
 
 @name ChairLocker
@@ -31,6 +34,14 @@
 @model models/bull/gates/processor.mdl
 @trigger none
 
+if ( dupefinished() )
+{
+    exit()
+}
+if ( duped() )
+{
+    reset()
+}
 if ( first() )
 {
     Chair = entity():isWeldedTo()
@@ -48,7 +59,7 @@ if ( first() )
     {
         if ( !Player:isPlayer() )
         {
-            return
+            return # Console said something?
         }
 #ifdef entity:propNotSolid( number )
         Chair:propNotSolid( IsLocked )
@@ -61,13 +72,13 @@ if ( first() )
             {
                 Chair:ejectPod()
             }
-            Message = "ChairLocker: " + Player:name() + " locked " + toString( Chair ) + "."
-            setName( "Chair Locker\nState: Locked" )
+            Message = "ChairLocker: (" + Player:steamID() + ") " + Player:name() + " locked " + toString( Chair ) + "."
+            setName( "Easy Vehicle Locker/Unlocker\nState: Locked" )
         }
         else
         {
-            Message = "ChairLocker: " + Player:name() + " unlocked " + toString( Chair ) + "."
-            setName( "Chair Locker\nState: Unlocked" )
+            Message = "ChairLocker: (" + Player:steamID() + ") " + Player:name() + " unlocked " + toString( Chair ) + "."
+            setName( "Easy Vehicle Locker/Unlocker\nState: Unlocked" )
         }
         print( Message )
         hint( Message, 7 )
@@ -82,49 +93,51 @@ if ( first() )
         {
             hideChat( 1 )
         }
-        if ( IsLocked & State == STATE_LOCK )
-        {
-            print( "ChairLocker: Attempt to lock already locked vehicle." )
-            return
-        }
-        if ( !IsLocked & State == STATE_UNLOCK )
-        {
-            print( "ChairLocker: Attempt to unlock already unlocked vehicle." )
-            return
-        }
+        #printColor( ">> ", teamColor( LastSpoke:team() ), LastSpoke:name(), vec( 255 ), ": " + LastSaidTrim ) # BUG: Prints more than once when multiple ChairLocker E2s are active (TODO: Fix using data-signals?).
         local Command = SplitLastSaid:removeString( 1 )
-        LastSaidTrim = SplitLastSaid:concat( " " ):trim()
-        local String = ""
-        for ( I = 1, LastSaidTrim:length(), 1 )
+        SplitLastSaid = SplitLastSaid:concat( " " ):explode( "," )
+        for ( I = 1, SplitLastSaid:count() )
         {
-            local Char = LastSaidTrim:index( I )
-            local Byte = toByte( Char )
-            if ( Byte < 48 | Byte > 57 ) # Accept digits only.
+            local EntIndex = SplitLastSaid[ I, string ]:toNumber()
+            if ( EntIndex < 1 )
             {
-                print( "ChairLocker: Found unexpected character '" + Char + "' (index=" + I + ")." )
-                return
+                continue # Silently ignore.
             }
-            String += Char
+            local Ent = entity( EntIndex )
+            if ( !Ent:isVehicle() )
+            {
+                print( "ChairLocker: Skipping. Specified entity ID (" + EntIndex + ") is not a vehicle." )
+                continue
+            }
+            if ( Ent:id() != Chair:id() )
+            {
+                continue # If not controlled by this E2 unit, just skip it.
+            }
+            if ( Ent:owner() != owner() & !Ent:owner():trusts( owner() ) )
+            {
+                print( "ChairLocker: Skipping. Specified entity ID (" + EntIndex + ") is not owned by you nor owner trusts you." )
+                continue
+            }
+            if ( IsLocked & State == STATE_LOCK )
+            {
+                print( "ChairLocker: (" + LastSpoke:steamID() + ") " + LastSpoke:name() + " attempted to lock already locked vehicle (" + EntIndex + ")." )
+                continue
+            }
+            if ( !IsLocked & State == STATE_UNLOCK )
+            {
+                print( "ChairLocker: (" + LastSpoke:steamID() + ") " + LastSpoke:name() + " attempted to unlock already unlocked vehicle (" + EntIndex + ")." )
+                continue
+            }
+            IsLocked = State == STATE_LOCK
+            handleLock( LastSpoke )
         }
-        local NumberExpression = String:match( "^(%d+)$" ) # TODO: Capture multiple IDs (separated by comma), to allow locking/unlocking multiple vehicles using a single command.
-        if ( NumberExpression:count() != 1 )
-        {
-            print( "ChairLocker: Invalid command syntax (use " + Command + " <entity ID>, e.g. " + Command + " " + Chair:id() + ")." )
-            return
-        }
-        if ( NumberExpression[ 1, string ]:toNumber() != Chair:id() )
-        {
-            return
-        }
-        IsLocked = State == STATE_LOCK
-        handleLock( LastSpoke )
     }
 
 #ifdef entity:propFreeze( number )
     Chair:propFreeze( 1 )
 #endif
     entity():setSkin( 1 )
-    IsLocked = STATE_LOCK # Default state when E2 is spawned; STATE_LOCK = lock chair/seat.
+    IsLocked = STATE_LOCK # Default state when E2 is spawned on the vehicle; STATE_LOCK = lock chair/seat.
     handleLock( owner() )
     runOnChat( 1 )
     runOnLast( 1 )
@@ -155,6 +168,7 @@ elseif ( chatClk() )
         case "togglestate",
         case "togglevehicle",
             hideChat( 1 )
+            #printColor( ">> ", teamColor( LastSpoke:team() ), LastSpoke:name(), vec( 255 ), ": " + Trim ) # BUG: Prints more than once when multiple ChairLocker E2s are active (TODO: Fix using data-signals?).
             if ( ( !LastSpoke:inVehicle() | LastSpoke:vehicle() != Chair ) & LastSpoke:aimEntity() != entity() & LastSpoke:aimEntity() != Chair )
             {
                 break
