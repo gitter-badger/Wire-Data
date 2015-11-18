@@ -16,6 +16,7 @@
 #   It is also possible to toggle current state using "togglechair" (case-insensitive) chat-command (but first aim on E2/chair or enter a chair/seat to toggle, notice this chat-command does not take any arguments).
 #   Good feature about this is, it works independently and allows multiple chairs to be controlled (just need to spawn a separate ChairLocker E2 on each).
 #   If you want chair/seat to remove when you remove E2, wire/set "ChairRemovalOnE2Remove" input to 1 (note: requires "propcore" extension enabled).
+#   If you want to automatically eject the driver (if any) when the vehicle gets locked, wire/set "EjectDriverOnLock" input to 1.
 #
 # Repository URL: https://github.com/CaptainPRICE/Wire-Data
 # For more details, please visit a thread on the forums: http://www.wiremod.com/forum/finished-contraptions/35272-easy-vehicle-locker-unlocker-e2.html
@@ -24,7 +25,7 @@
 #
 
 @name ChairLocker
-@inputs ChairRemovalOnE2Remove
+@inputs [ChairRemovalOnE2Remove EjectDriverOnLock]
 @outputs Chair:entity IsLocked
 @persist [STATE_LOCK STATE_UNLOCK]
 @model models/bull/gates/processor.mdl
@@ -40,13 +41,15 @@ if ( first() )
 
     STATE_LOCK = 1
 
-    entity():setSkin( 1 )
-
     #
     # A function that is called after IsLocked is changed (used to lock or unlock the chair depending on the value of IsLocked).
     #
-    function handleLock()
+    function handleLock( Player:entity )
     {
+        if ( !Player:isPlayer() )
+        {
+            return
+        }
 #ifdef entity:propNotSolid( number )
         Chair:propNotSolid( IsLocked )
 #endif
@@ -54,12 +57,17 @@ if ( first() )
         local Message = ""
         if ( IsLocked )
         {
-            Chair:ejectPod()
-            Message = format( "%s: Locked %s.", entity():getName(), Chair )
+            if ( ->EjectDriverOnLock & EjectDriverOnLock )
+            {
+                Chair:ejectPod()
+            }
+            Message = "ChairLocker: " + Player:name() + " locked " + toString( Chair ) + "."
+            setName( "Chair Locker\nState: Locked" )
         }
         else
         {
-            Message = format( "%s: Unlocked %s.", entity():getName(), Chair )
+            Message = "ChairLocker: " + Player:name() + " unlocked " + toString( Chair ) + "."
+            setName( "Chair Locker\nState: Unlocked" )
         }
         print( Message )
         hint( Message, 7 )
@@ -74,6 +82,16 @@ if ( first() )
         {
             hideChat( 1 )
         }
+        if ( IsLocked & State == STATE_LOCK )
+        {
+            print( "ChairLocker: Attempt to lock already locked vehicle." )
+            return
+        }
+        if ( !IsLocked & State == STATE_UNLOCK )
+        {
+            print( "ChairLocker: Attempt to unlock already unlocked vehicle." )
+            return
+        }
         local Command = SplitLastSaid:removeString( 1 )
         LastSaidTrim = SplitLastSaid:concat( " " ):trim()
         local String = ""
@@ -83,15 +101,15 @@ if ( first() )
             local Byte = toByte( Char )
             if ( Byte < 48 | Byte > 57 ) # Accept digits only.
             {
-                print( format( "%s: Found unexpected character '%s' (index=%i).", entity():getName(), Char, I ) )
+                print( "ChairLocker: Found unexpected character '" + Char + "' (index=" + I + ")." )
                 return
             }
             String += Char
         }
-        local NumberExpression = String:match( "^(%d+)$" )
+        local NumberExpression = String:match( "^(%d+)$" ) # TODO: Capture multiple IDs (separated by comma), to allow locking/unlocking multiple vehicles using a single command.
         if ( NumberExpression:count() != 1 )
         {
-            print( format( "%s: Invalid command syntax (use %s <entity ID>, e.g. %s %s).", entity():getName(), Command, Command, Chair:id() ) )
+            print( "ChairLocker: Invalid command syntax (use " + Command + " <entity ID>, e.g. " + Command + " " + Chair:id() + ")." )
             return
         }
         if ( NumberExpression[ 1, string ]:toNumber() != Chair:id() )
@@ -99,11 +117,15 @@ if ( first() )
             return
         }
         IsLocked = State == STATE_LOCK
-        handleLock()
+        handleLock( LastSpoke )
     }
 
+#ifdef entity:propFreeze( number )
+    Chair:propFreeze( 1 )
+#endif
+    entity():setSkin( 1 )
     IsLocked = STATE_LOCK # Default state when E2 is spawned; STATE_LOCK = lock chair/seat.
-    handleLock()
+    handleLock( owner() )
     runOnChat( 1 )
     runOnLast( 1 )
 }
@@ -130,6 +152,7 @@ elseif ( chatClk() )
             break
         case "togglechair",
         case "toggleseat",
+        case "togglestate",
         case "togglevehicle",
             hideChat( 1 )
             if ( ( !LastSpoke:inVehicle() | LastSpoke:vehicle() != Chair ) & LastSpoke:aimEntity() != entity() & LastSpoke:aimEntity() != Chair )
@@ -137,7 +160,7 @@ elseif ( chatClk() )
                 break
             }
             IsLocked = !IsLocked
-            handleLock()
+            handleLock( LastSpoke )
             break
     }
 }
