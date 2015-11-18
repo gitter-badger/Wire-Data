@@ -8,8 +8,7 @@
 #   GNU General Public License version 3.
 #
 # DESCRIPTION:
-#   Allows you (and players you trust) to easly lock any chair/seat owned by you (or player you trust).
-#   Simple and effective Expression 2 script, nothing special here.
+#   Simple and effective Expression 2 script which allows you (and players you trust) to easily lock any chair/seat owned by you (or player you trust).
 #
 # SETUP / INSTALLATION INSTRUCTIONS:
 #   Spawn this E2 on chair/seat to lock it (or use chat command (case-insensitive): lockchair <entity ID>).
@@ -19,6 +18,7 @@
 #   If you want chair/seat to remove when you remove E2, wire/set "ChairRemovalOnE2Remove" input to 1 (note: requires "propcore" extension enabled).
 #
 # Repository URL: https://github.com/CaptainPRICE/Wire-Data
+# For more details, please visit a thread on the forums: http://www.wiremod.com/forum/finished-contraptions/35272-easy-vehicle-locker-unlocker-e2.html
 # In this E2, I have implemented a bit more advanced chat-command parsing.
 # As always, have fun!
 #
@@ -51,10 +51,18 @@ if ( first() )
         Chair:propNotSolid( IsLocked )
 #endif
         Chair:lockPod( IsLocked )
+        local Message = ""
         if ( IsLocked )
         {
             Chair:ejectPod()
+            Message = format( "%s: Locked %s.", entity():getName(), Chair )
         }
+        else
+        {
+            Message = format( "%s: Unlocked %s.", entity():getName(), Chair )
+        }
+        print( Message )
+        hint( Message, 7 )
     }
 
     #
@@ -75,7 +83,7 @@ if ( first() )
             local Byte = toByte( Char )
             if ( Byte < 48 | Byte > 57 ) # Accept digits only.
             {
-                print( "ChairLocker: Found unexpected character '" + Char + "' (index=" + I + ")." )
+                print( format( "%s: Found unexpected character '%s' (index=%i).", entity():getName(), Char, I ) )
                 return
             }
             String += Char
@@ -83,7 +91,7 @@ if ( first() )
         local NumberExpression = String:match( "^(%d+)$" )
         if ( NumberExpression:count() != 1 )
         {
-            print( "ChairLocker: Invalid command syntax (use " + Command + " <entity ID>, e.g. " + Command + " " + Chair:id() + ")." )
+            print( format( "%s: Invalid command syntax (use %s <entity ID>, e.g. %s %s).", entity():getName(), Command, Command, Chair:id() ) )
             return
         }
         if ( NumberExpression[ 1, string ]:toNumber() != Chair:id() )
@@ -111,12 +119,18 @@ elseif ( chatClk() )
     switch ( Exp[ 1, string ]:lower() )
     {
         case "lockchair",
+        case "lockseat",
+        case "lockvehicle",
             onChairChatCommandHandler( LastSpoke, Trim, Exp, STATE_LOCK )
             break
         case "unlockchair",
+        case "unlockseat",
+        case "unlockvehicle",
             onChairChatCommandHandler( LastSpoke, Trim, Exp, STATE_UNLOCK )
             break
         case "togglechair",
+        case "toggleseat",
+        case "togglevehicle",
             hideChat( 1 )
             if ( ( !LastSpoke:inVehicle() | LastSpoke:vehicle() != Chair ) & LastSpoke:aimEntity() != entity() & LastSpoke:aimEntity() != Chair )
             {
@@ -129,10 +143,10 @@ elseif ( chatClk() )
 }
 elseif ( last() )
 {
-    if ( ChairRemovalOnE2Remove )
+    if ( ->ChairRemovalOnE2Remove & ChairRemovalOnE2Remove )
     {
 #ifdef entity:propDelete()
-        # Remove chair/seat when E2 gets removed.
+        # Remove/delete chair/seat when E2 gets removed.
         if ( Chair:isVehicle() )
         {
             Chair:propDelete()
