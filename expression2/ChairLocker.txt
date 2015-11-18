@@ -1,0 +1,149 @@
+#
+# DO NOT MODIFY OR REMOVE THIS HEADER!
+#
+# CREDITS/CONTRIBUTORS:
+#   Originally developed and maintained by STEAM_0:0:65979910 (http://steamcommunity.com/profiles/76561198092225548/ - STEAM_0:0:65979910; U:1:131959820); TheCaptainPrice a.k.a. CaptainPRICE.
+#
+# LICENSE:
+#   GNU General Public License version 3.
+#
+# DESCRIPTION:
+#   Allows you (and players you trust) to easly lock any chair/seat owned by you (or player you trust).
+#   Simple and effective Expression 2 script, nothing special here.
+#
+# SETUP / INSTALLATION INSTRUCTIONS:
+#   Spawn this E2 on chair/seat to lock it (or use chat command (case-insensitive): lockchair <entity ID>).
+#   To unlock chair/seat, remove this E2 from it (or use chat command (case-insensitive): unlockchair <entity ID>).
+#   It is also possible to toggle current state using "togglechair" (case-insensitive) chat-command (but first aim on E2/chair or enter a chair/seat to toggle, notice this chat-command does not take any arguments).
+#   Good feature about this is, it works independently and allows multiple chairs to be controlled (just need to spawn a separate ChairLocker E2 on each).
+#   If you want chair/seat to remove when you remove E2, wire/set "ChairRemovalOnE2Remove" input to 1 (note: requires "propcore" extension enabled).
+#
+# Repository URL: https://github.com/CaptainPRICE/Wire-Data
+# In this E2, I have implemented a bit more advanced chat-command parsing.
+# As always, have fun!
+#
+
+@name ChairLocker
+@inputs ChairRemovalOnE2Remove
+@outputs Chair:entity IsLocked
+@persist [STATE_LOCK STATE_UNLOCK]
+@model models/bull/gates/processor.mdl
+@trigger none
+
+if ( first() )
+{
+    Chair = entity():isWeldedTo()
+    if ( !Chair:isVehicle() )
+    {
+        error( "Not spawned on the chair/seat (vehicle)." )
+    }
+
+    STATE_LOCK = 1
+
+    entity():setSkin( 1 )
+
+    #
+    # A function that is called after IsLocked is changed (used to lock or unlock the chair depending on the value of IsLocked).
+    #
+    function handleLock()
+    {
+#ifdef entity:propNotSolid( number )
+        Chair:propNotSolid( IsLocked )
+#endif
+        Chair:lockPod( IsLocked )
+        if ( IsLocked )
+        {
+            Chair:ejectPod()
+        }
+    }
+
+    #
+    # A function that occurs whenever the valid player (either you or player you trust) said "lockchair" or "unlockchair" in chat (case-insensitive).
+    #
+    function onChairChatCommandHandler( LastSpoke:entity, LastSaidTrim:string, SplitLastSaid:array, State:number )
+    {
+        if ( LastSpoke == owner() )
+        {
+            hideChat( 1 )
+        }
+        local Command = SplitLastSaid:removeString( 1 )
+        LastSaidTrim = SplitLastSaid:concat( " " ):trim()
+        local String = ""
+        for ( I = 1, LastSaidTrim:length(), 1 )
+        {
+            local Char = LastSaidTrim:index( I )
+            local Byte = toByte( Char )
+            if ( Byte < 48 | Byte > 57 ) # Accept digits only.
+            {
+                print( "ChairLocker: Found unexpected character '" + Char + "' (index=" + I + ")." )
+                return
+            }
+            String += Char
+        }
+        local NumberExpression = String:match( "^(%d+)$" )
+        if ( NumberExpression:count() != 1 )
+        {
+            print( "ChairLocker: Invalid command syntax (use " + Command + " <entity ID>, e.g. " + Command + " " + Chair:id() + ")." )
+            return
+        }
+        if ( NumberExpression[ 1, string ]:toNumber() != Chair:id() )
+        {
+            return
+        }
+        IsLocked = State == STATE_LOCK
+        handleLock()
+    }
+
+    IsLocked = STATE_LOCK # Default state when E2 is spawned; STATE_LOCK = lock chair/seat.
+    handleLock()
+    runOnChat( 1 )
+    runOnLast( 1 )
+}
+elseif ( chatClk() )
+{
+    local LastSpoke = lastSpoke()
+    if ( !LastSpoke:isPlayer() | ( LastSpoke != owner() & !owner():trusts( LastSpoke ) ) )
+    {
+        exit()
+    }
+    local Trim = LastSpoke:lastSaid():trim()
+    local Exp = Trim:explode( " " )
+    switch ( Exp[ 1, string ]:lower() )
+    {
+        case "lockchair",
+            onChairChatCommandHandler( LastSpoke, Trim, Exp, STATE_LOCK )
+            break
+        case "unlockchair",
+            onChairChatCommandHandler( LastSpoke, Trim, Exp, STATE_UNLOCK )
+            break
+        case "togglechair",
+            hideChat( 1 )
+            if ( ( !LastSpoke:inVehicle() | LastSpoke:vehicle() != Chair ) & LastSpoke:aimEntity() != entity() & LastSpoke:aimEntity() != Chair )
+            {
+                break
+            }
+            IsLocked = !IsLocked
+            handleLock()
+            break
+    }
+}
+elseif ( last() )
+{
+    if ( ChairRemovalOnE2Remove )
+    {
+#ifdef entity:propDelete()
+        # Remove chair/seat when E2 gets removed.
+        if ( Chair:isVehicle() )
+        {
+            Chair:propDelete()
+        }
+#endif
+    }
+    IsLocked = STATE_UNLOCK
+    Chair:lockPod( IsLocked ) # Unlock a chair.
+}
+if ( !Chair:isVehicle() )
+{
+    # Remove E2 when chair/seat gets removed.
+    selfDestruct()
+}
