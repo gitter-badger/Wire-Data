@@ -5,6 +5,9 @@
 #   Originally developed and maintained by STEAM_0:0:65979910 (http://steamcommunity.com/profiles/76561198092225548/ - STEAM_0:0:65979910; U:1:131959820); TheCaptainPrice a.k.a. CaptainPRICE.
 #   Special thanks to STEAM_0:1:5597822 (http://steamcommunity.com/profiles/76561198072222169/ - STEAM_0:1:5597822; U:1:11195645); DerPole for giving me a free ride and idea for such E2.
 #
+# LICENSE:
+#   GNU General Public License version 3.
+#
 # INSTALLATION / SETUP:
 #   Requires Wire installed and "propcore" Expression 2 extension enabled on the server!
 #   Spawn a Wire User (with range set to ~20), then spawn this E2. Wire "User [ENTITY]" input from E2 to "Create Entity [ENTITY]" (entity) output on the Wire User.
@@ -28,7 +31,6 @@ if ( first() )
     error( "Can not continue due propcore extension is not enabled on this server." )
 #endif
     runOnKeys( owner(), 1 )
-    runOnTick( 1 )
 }
 if ( !->User | !User:isValid() | User:type() != "gmod_wire_user" )
 {
@@ -36,6 +38,8 @@ if ( !->User | !User:isValid() | User:type() != "gmod_wire_user" )
 }
 if ( changed( User ) )
 {
+    User:propNotSolid( 1 )
+    User:setColor( vec4( 255, 255, 255, 0 ) )
     UserWL = User:wirelink()
 }
 UserWL[ "Fire", number ] = 0
