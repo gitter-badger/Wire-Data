@@ -1,0 +1,87 @@
+#
+# DO NOT MODIFY OR REMOVE THIS HEADER!
+#
+# CREDITS/CONTRIBUTORS:
+#   Originally developed and maintained by STEAM_0:0:65979910 (http://steamcommunity.com/profiles/76561198092225548/ - STEAM_0:0:65979910; U:1:131959820); TheCaptainPrice a.k.a. CaptainPRICE.
+#
+# LICENSE:
+#   GNU General Public License version 3.
+#
+# DESCRIPTION:
+#   Simple and effective Expression 2 script for logging advdupe2 clicks (also logs area dupe).
+#
+# SETUP / INSTALLATION INSTRUCTIONS:
+#   Spawn this E2. That's it.
+#   You will be notified whenever any player (but you) uses advanced duplicator.
+#
+# Repository URL: https://github.com/CaptainPRICE/Wire-Data
+# I think this is pretty simple code, most of it is self-explanatory.
+# But, I hope you will learn something new from it. As always, have fun!
+#
+
+@name AdvDupeLogger
+@outputs NumPlayers
+@persist Players:table
+@trigger none
+
+if ( first() )
+{
+    Players = table()
+
+    #
+    # runOnKeys overload (takes an array of players).
+    # Also ignores you (the owner).
+    #
+    function runOnKeys( A:array, B:number )
+    {
+        foreach ( K, V:entity = A )
+        {
+            if ( V == owner() ) # Ignore self.
+            {
+                continue
+            }
+            Players[ V:steamID(), number ] = 0 # Used for press/release check.
+            runOnKeys( V, B )
+        }
+    }
+
+    runOnLast( 1 )
+}
+elseif ( last() )
+{
+    # On shutdown.
+    runOnKeys( players(), 0 )
+}
+local PlayersNow = numPlayers()
+if ( PlayersNow != NumPlayers )
+{
+    if ( PlayersNow > NumPlayers )
+    {
+        print( "AdvDupeLogger: " + ( PlayersNow - NumPlayers ) + " player(s) connected." )
+    }
+    else#if ( PlayersNow < NumPlayers )
+    {
+        print( "AdvDupeLogger: " + ( NumPlayers - PlayersNow ) + " player(s) disconnected." )
+    }
+    runOnKeys( players(), 1 )
+    NumPlayers = PlayersNow
+}
+local Player = keyClk()
+if ( keyClkPressed() != "mouse_right" | Player:inVehicle() | !Player:isAlive() | Player:weapon():type() != "gmod_tool" | Player:tool() != "advdupe2" )
+{
+    exit()
+}
+Players[ Player:steamID(), number ] = !Players[ Player:steamID(), number ] # Toggle press/release flag.
+if ( Players[ Player:steamID(), number ] )
+{
+    exit() # On pressed.
+}
+# Right mouse button was released.
+local Target = Player:aimEntity():owner()
+local Message = Player:keySprint() ? "area " : ""
+local AimVector = round( Player:aimPos() )
+print( "AdvDupeLogger: " + Player:steamID() + "/" + Player:name() + ( Target:isPlayer() ? " used " + Message + "dupe on " + Target:steamID() + "/" + Target:name() : " used " + Message + "dupe on world (" + AimVector:x() + "," + AimVector:y() + "," + AimVector:z() + ")" ) )
+if ( Target == owner() & owner():trusts( Target ) )
+{
+    hint( "AdvDupeLogger: " + Player:steamID() + "/" + Player:name() + " used " + Message + "dupe on your contraption", 7 )
+}
