@@ -5,20 +5,35 @@
 #   Originally created/developed and maintained by STEAM_0:0:65979910 (http://steamcommunity.com/profiles/76561198092225548/ - STEAM_0:0:65979910; U:1:131959820); TheCaptainPrice a.k.a. CaptainPRICE.
 #
 # LICENSE:
-#   GNU General Public License version 3.
+#   Copyright (C) 2016 CaptainPRICE
+#
+#   This program is free software: you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation, either version 3 of the License, or
+#   (at your option) any later version.
+#
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License
+#   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# END OF LICENSE.
 #
 # Repository URL: https://github.com/CaptainPRICE/Wire-Data
 # I hope you will learn something new from it. Be sure to have fun!
 #
 
 @name Healthbar
-@persist Player:entity [HID1 HID2 HoloId MaxHealth] Offset:vector
+@persist Player:entity [HID1 HID2 HoloId MaxHealth VelocityMultiplier] Offset:vector
 @trigger none
 
 if (first())
 {
 #ifndef holoAng(number, angle) | holoColor(number, vector) | holoCreate(number, vector, vector, angle, vector, string) | holoDelete(number) | holoIndex(entity) | holoPos(number, vector)
-    error("Healthbar: Can not continue due core holographic functionality is missing!")
+    error(getName() + ": Can not continue due core holographic functionality is missing!")
 #endif
 
     #
@@ -28,13 +43,14 @@ if (first())
     HoloId    = -randint(1, 1073741823)  # Lucky random pick (used with holoCreate), to avoid replacing your existing E2 holograms with those created by Healthbar.
     MaxHealth = 100            # Set this value manually (since there is no builtin function for retrieving the maximum health from player).
     Offset    = vec(0, 0, 24)  # Vector offset, relative to eyes position.
+    VelocityMultiplier = 0.0  # Multiplier (number) to use for velocity prediction (set it to 0 to disable this feature).
 
     #
     # Returns an angle for healthbar hologram.
     #
     function angle holoAng()
     {
-        return ang(0, Player:eyeAngles():yaw(), 0)
+        return angnorm(ang(0, Player:eyeAngles():yaw(), 0))
     } # End of holoAng():angle
 
     #
@@ -52,7 +68,7 @@ if (first())
     #
     function vector holoPos()
     {
-        return ((Player:inVehicle()) ? Player:vehicle():attachmentPos("vehicle_driver_eyes") + (Player:vehicle():vel() * 0.16) : Player:attachmentPos("eyes") + (Player:vel() * 0.16)) + Offset
+        return ((Player:inVehicle()) ? Player:vehicle():attachmentPos("vehicle_driver_eyes") + (Player:vehicle():vel() * VelocityMultiplier) : Player:attachmentPos("eyes") + (Player:vel() * VelocityMultiplier)) + Offset
     } # End of holoPos():vector
 
     #
