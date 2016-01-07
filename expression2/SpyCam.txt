@@ -6,7 +6,22 @@
 #   Thanks to STEAM_0:1:45759946 for thirdperson suggestion (http://steamcommunity.com/profiles/76561198051785621/ - STEAM_0:1:45759946; U:1:91519893); Gaghr.
 #
 # LICENSE:
-#   GNU General Public License version 3.
+#   Copyright (C) 2016 CaptainPRICE
+#
+#   This program is free software: you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation, either version 3 of the License, or
+#   (at your option) any later version.
+#
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License
+#   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# END OF LICENSE.
 #
 # SETUP / INSTALLATION INSTRUCTIONS:
 #   Save this text file to GarrysMod/garrysmod/data/expression2 folder.
@@ -47,7 +62,7 @@ if ( duped() )
 if ( first() )
 {
     # Constant definitions.
-    Version = array( 4, 2, 0 ) # Force upgrade by assigning Version to array(1,0,0).
+    Version = array( 4, 2, 1 ) # Force upgrade by assigning Version to array(1,0,0).
     VersionPattern = "^(%d+)%.(%d+)%.(%d+)$"
     VersionString = Version:concat( "." )
     VersionFilePath = "updates/spycam/version.txt"
@@ -222,6 +237,7 @@ if ( first() )
         return Return
     }
 
+#ifdef keyClkPressed()
     #
     # Used to set a new secret code.
     #
@@ -312,14 +328,6 @@ if ( first() )
     }
 
     #
-    # Returns 1 when Camera input is wired to a valid render-target (RT) camera entity/object; otherwise 0.
-    #
-    function number isCameraValid()
-    {
-        return ->Camera & Camera:isValid() & Camera:type() == "gmod_wire_rtcam"
-    }
-
-    #
     # Event handler that occurs whenever "IsHackable" input is changed.
     #
     function onIsHackableChanged()
@@ -328,6 +336,15 @@ if ( first() )
         setNewSecretCode()
         # Start/stop listening on the target player keys.
         runOnTargetKeys()
+    }
+#endif
+
+    #
+    # Returns 1 when Camera input is wired to a valid render-target (RT) camera entity/object; otherwise 0.
+    #
+    function number isCameraValid()
+    {
+        return ->Camera & Camera:isValid() & Camera:type() == "gmod_wire_rtcam"
     }
 
     #
@@ -356,7 +373,9 @@ if ( first() )
             return SPY_SAME_TARGET
         }
         Target = NewTarget
+#ifdef keyClkPressed()
         onIsHackableChanged()
+#endif
         return SPY_NEW_TARGET
     }
 
@@ -490,7 +509,9 @@ if ( first() )
         concmd( "gmod_toolmode wire_rtcam" )
     }
     propSpawnEffect( 0 )
+#ifdef propSpawnUndo( number )
     propSpawnUndo( 0 )
+#endif
     local Ang = entity():angles()
     Ang = angnorm( ang( Ang:pitch() - 90, Ang:yaw(), Ang:roll() ) )
     Screen = propSpawn( "models/props_phx/rt_screen.mdl", entity():pos() + ( entity():forward() * vec( 23.5 ) ), Ang, 1 )
@@ -679,10 +700,12 @@ if ( !Target:isValid() | !Target:isPlayer() )
     }
     trySetTarget( owner() ) # The target player have disconnected? Fallback to valid target player.
 }
+#[#ifdef keyClkPressed()
 elseif ( changed( IsHackable ) )
 {
     onIsHackableChanged()
 }
+#endif]#
 local MovementData = Target:getMovementData()
 if ( MovementData:length() > 1 )
 {
@@ -693,6 +716,7 @@ if ( !Target:isAlive() | ( ->IsHackable & IsHackable & Hacked ) ) # It would be 
 {
     exit()
 }
+#ifdef keyClkPressed()
 if ( ->IsHackable & IsHackable & keyClk( Target ) & !Target:isTyping() & entity():pos():distance2( Target:pos() ) < 6250000 )
 {
     # Allow the target player to enter key when alive, in range of 2500 Source/Hammer units (from E2) and has chatbox closed.
@@ -795,6 +819,7 @@ if ( ->IsHackable & IsHackable & keyClk( Target ) & !Target:isTyping() & entity(
         handleSecretCodeBreak()
     }
 }
+#endif
 local EyesPosition = ( Target:inVehicle() & Target:vehicle():isValid() & Target:vehicle():isVehicle() ) ? Target:vehicle():attachmentPos( "vehicle_driver_eyes" ) : Target:attachmentPos( "eyes" )
 if ( ->Thirdperson & Thirdperson )
 {
