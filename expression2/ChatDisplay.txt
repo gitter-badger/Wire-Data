@@ -1,0 +1,74 @@
+#
+# CREDITS / CONTRIBUTORS:
+#   Originally created/developed and maintained by STEAM_0:0:65979910 (http://steamcommunity.com/profiles/76561198092225548/ - STEAM_0:0:65979910; U:1:131959820); TheCaptainPrice a.k.a. CaptainPRICE.
+#
+# LICENSE:
+#   GNU General Public License version 3.
+#
+# Repository URL: https://github.com/CaptainPRICE/Wire-Data
+# I hope you will learn something new from it. Be sure to have fun!
+#
+
+@name ChatDisplay
+@outputs IsOwnerTyping
+@persist [Entity Player]:entity [Direction VelocityMultiplier Yaw] Offset:vector
+@trigger none
+@model models/extras/info_speech.mdl
+
+if (first())
+{
+#ifndef entity:isTyping()
+    error(getName() + ": Can not continue due core entity functionality is missing!")
+#endif
+#ifndef entity:setAlpha(number) | entity:setAng(angle) | entity:setPos(vector)
+    error(getName() + ": Can not continue due \"propcore\" extension is not enabled on this server!")
+#endif
+
+    #
+    # Configuration/Constant values.
+    #
+    DIRECTION_LEFT      = 1 << 0
+    DIRECTION_RIGHT     = -DIRECTION_LEFT
+    Direction           = DIRECTION_LEFT   # Direction of your wish for "display" to rotate in (set it to either DIRECTION_LEFT or DIRECTION_RIGHT, default is DIRECTION_LEFT).
+    Offset              = vec(0, 0, 44)    # Vector offset, relative to eyes position (default is vec(0, 0, 44)).
+    VelocityMultiplier  = 0.0              # Optional multiplier for velocity prediction (vector), set it to 0 to disable this feature (it is set to 0 by default).
+    Entity = entity()
+    Player = owner()
+
+    #
+    # Returns a position (vector) for the chat display.
+    #
+    function vector setPos()
+    {
+        return ((Player:inVehicle()) ? Player:vehicle():attachmentPos("vehicle_driver_eyes") + (Player:vehicle():vel() * VelocityMultiplier) : Player:attachmentPos("eyes") + (Player:vel() * VelocityMultiplier)) + Offset
+    } # End of setPos():vector
+
+#ifdef entity:propNotSolid(number)
+    Entity:propNotSolid(1)
+#endif
+#ifdef noCollideAll(entity, number)
+    noCollideAll(Entity, 1)
+#endif
+#ifdef entity:setNoCollideAll()
+    Entity:setNoCollideAll()
+#endif
+
+#ifdef runOnKeys(number)
+    runOnKeys(Owner, 1)
+#else
+    runOnTick(1)
+#endif
+} # End of first()
+
+Yaw += Direction
+IsOwnerTyping = Player:isTyping()
+if (IsOwnerTyping)
+{
+    Entity:setAlpha(255)
+    Entity:setAng(angnorm(ang(0, Yaw, 0)))
+    Entity:setPos(setPos())
+}
+else
+{
+    Entity:setAlpha(0)
+}
