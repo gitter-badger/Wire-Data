@@ -1,0 +1,105 @@
+#
+# IMPORTANT: DO NOT REMOVE OR MODIFY THIS HEADER!
+#
+# CREDITS / CONTRIBUTORS:
+#   Originally created/developed and maintained by STEAM_0:0:65979910 (http://steamcommunity.com/profiles/76561198092225548/ - STEAM_0:0:65979910; U:1:131959820); TheCaptainPrice a.k.a. CaptainPRICE.
+#
+# LICENSE:
+#   GNU General Public License version 3.
+#
+# Repository URL: https://github.com/CaptainPRICE/Wire-Data
+# I hope you will learn something new from it. Be sure to have fun!
+#
+
+@name Healthbar
+@persist Player:entity [HID1 HID2 HoloId MaxHealth] Offset:vector
+@trigger none
+
+if (first())
+{
+#ifndef holoAng(number, angle) | holoColor(number, vector) | holoCreate(number, vector, vector, angle, vector, string) | holoDelete(number) | holoIndex(entity) | holoPos(number, vector)
+    error("Healthbar: Can not continue due core holographic functionality is missing!")
+#endif
+
+    #
+    # Configuration/Constant values.
+    #
+    Player    = owner()
+    HoloId    = -randint(1, 1073741823)  # Lucky random pick (used with holoCreate), to avoid replacing your existing E2 holograms with those created by Healthbar.
+    MaxHealth = 100            # Set this value manually (since there is no builtin function for retrieving the maximum health from player).
+    Offset    = vec(0, 0, 24)  # Vector offset, relative to eyes position.
+
+    #
+    # Returns an angle for healthbar hologram.
+    #
+    function angle holoAng()
+    {
+        return ang(0, Player:eyeAngles():yaw(), 0)
+    } # End of holoAng():angle
+
+    #
+    # Returns a color (vector) for healthbar hologram.
+    #
+    function vector holoColor()
+    {
+        # Fade from green (100%) to red (0%).
+        local Health = min(abs(Player:health()), MaxHealth) / MaxHealth
+        return vec((1 - Health) * 255, Health * 255, 0)
+    } # End of holoColor():vector
+
+    #
+    # Returns a position (vector) for healthbar hologram.
+    #
+    function vector holoPos()
+    {
+        return ((Player:inVehicle()) ? Player:vehicle():attachmentPos("vehicle_driver_eyes") + (Player:vehicle():vel() * 0.16) : Player:attachmentPos("eyes") + (Player:vel() * 0.16)) + Offset
+    } # End of holoPos():vector
+
+    #
+    # Returns an identifer (number) for use with holoCreate function.
+    #
+    function number holoId()
+    {
+        HoloId--
+        return HoloId
+    } # End of holoId():number
+
+    HID1 = holoIndex(holoCreate(holoId(), holoPos(), vec(0.5, 3.0, 0.6), holoAng(), vec(), "hq_rcube_thin"))
+    HID2 = holoIndex(holoCreate(holoId(), holoPos(), vec(0.6, 2.9, 0.5), holoAng(), holoColor(), "hq_rcube_thin"))
+    holoParent(HID2, HID1)
+
+    runOnLast(1)
+    runOnTick(1)
+} # End of first()
+elseif (last())
+{
+    #
+    # Manually cleaning-up holograms (since for some reason holoDeleteAll function does not work as expected).
+    #
+    holoDelete(HID1)
+    holoDelete(HID2)
+#ifdef holoDeleteAll()
+    holoDeleteAll()
+#endif
+    exit()
+} # End of last()
+
+if (Player:isAlive())
+{
+#ifdef holoAlpha(number, number)
+    holoAlpha(HID1, 255)
+    holoAlpha(HID2, 255)
+#endif
+    holoAng(HID1, holoAng())
+    holoPos(HID1, holoPos())
+    holoColor(HID2, holoColor())
+}
+else
+{
+#ifdef holoAlpha(number, number)
+    holoAlpha(HID1, 0)
+    holoAlpha(HID2, 0)
+#else
+    holoPos(HID1, vec())
+#endif
+}
