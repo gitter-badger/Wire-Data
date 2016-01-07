@@ -1,12 +1,27 @@
 #
-# DO NOT MODIFY OR REMOVE THIS HEADER!
+# IMPORTANT: DO NOT REMOVE OR MODIFY THIS HEADER!
 #
-# CREDITS/CONTRIBUTORS:
-#   Originally developed and maintained by STEAM_0:0:65979910 (http://steamcommunity.com/profiles/76561198092225548/ - STEAM_0:0:65979910; U:1:131959820); TheCaptainPrice a.k.a. CaptainPRICE.
+# CREDITS / CONTRIBUTORS:
+#   Originally created/developed and maintained by STEAM_0:0:65979910 (http://steamcommunity.com/profiles/76561198092225548/ - STEAM_0:0:65979910; U:1:131959820); TheCaptainPrice a.k.a. CaptainPRICE.
 #   Special thanks to STEAM_0:1:5597822 (http://steamcommunity.com/profiles/76561198072222169/ - STEAM_0:1:5597822; U:1:11195645); DerPole for giving me a free ride and idea for such E2.
 #
 # LICENSE:
-#   GNU General Public License version 3.
+#   Copyright (C) 2016 CaptainPRICE
+#
+#   This program is free software: you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation, either version 3 of the License, or
+#   (at your option) any later version.
+#
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License
+#   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# END OF LICENSE.
 #
 # INSTALLATION / SETUP:
 #   Requires Wire installed and "propcore" Expression 2 extension enabled on the server!
@@ -38,6 +53,8 @@ if ( !->User | !User:isValid() | User:type() != "gmod_wire_user" )
 }
 if ( changed( User ) )
 {
+    #entity():propNotSolid( 1 )
+    #entity():setAlpha( 0 )
     User:propNotSolid( 1 )
     User:setColor( vec4( 255, 255, 255, 0 ) )
     UserWL = User:wirelink()
