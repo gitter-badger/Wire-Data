@@ -1,15 +1,30 @@
 #
-# DO NOT MODIFY OR REMOVE THIS HEADER!
+# IMPORTANT: DO NOT REMOVE OR MODIFY THIS HEADER!
 #
-# CREDITS/CONTRIBUTORS:
-#   Originally developed and maintained by STEAM_0:0:65979910 (http://steamcommunity.com/profiles/76561198092225548/ - STEAM_0:0:65979910; U:1:131959820); TheCaptainPrice a.k.a. CaptainPRICE.
+# CREDITS / CONTRIBUTORS:
+#   Originally created/developed and maintained by STEAM_0:0:65979910 (http://steamcommunity.com/profiles/76561198092225548/ - STEAM_0:0:65979910; U:1:131959820); TheCaptainPrice a.k.a. CaptainPRICE.
 #   Chat parsing improvements by STEAM_0:0:9583907 (http://steamcommunity.com/profiles/76561197979433542/ - STEAM_0:0:9583907; U:1:19167814); Divran.
 #
 # LICENSE:
-#   GNU General Public License version 3.
+#   Copyright (C) 2016 CaptainPRICE
+#
+#   This program is free software: you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation, either version 3 of the License, or
+#   (at your option) any later version.
+#
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License
+#   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# END OF LICENSE.
 #
 # DESCRIPTION:
-#   Simple and effective Expression 2 script which allows you (and players you trust) to easily lock any chair/seat owned by you (or player you trust).
+#   Simple and effective Expression 2 script which allows you (and players that trusts you) to easily lock any chair/seat owned by you (or player you trust).
 #
 # SETUP / INSTALLATION INSTRUCTIONS:
 #   Spawn this E2 on chair/seat to lock it (or use chat command (case-insensitive): lockchair <entity ID>).
@@ -29,7 +44,7 @@
 
 @name ChairLocker
 @inputs [ChairRemovalOnE2Remove EjectDriverOnLock]
-@outputs Chair:entity IsLocked
+@outputs Chair:entity [ID IsLocked]
 @persist [STATE_LOCK STATE_UNLOCK]
 @model models/bull/gates/processor.mdl
 @trigger none
@@ -49,6 +64,7 @@ if ( first() )
     {
         error( "Not spawned on the chair/seat (vehicle)." )
     }
+    ID = Chair:id()
 
     STATE_LOCK = 1
 
@@ -73,19 +89,19 @@ if ( first() )
                 Chair:ejectPod()
             }
             Message = "ChairLocker: (" + Player:steamID() + ") " + Player:name() + " locked " + toString( Chair ) + "."
-            setName( "Easy Vehicle Locker/Unlocker\nState: Locked" )
+            setName( "Easy Vehicle Locker/Unlocker\nID: " + ID + "\nState: Locked" )
         }
         else
         {
             Message = "ChairLocker: (" + Player:steamID() + ") " + Player:name() + " unlocked " + toString( Chair ) + "."
-            setName( "Easy Vehicle Locker/Unlocker\nState: Unlocked" )
+            setName( "Easy Vehicle Locker/Unlocker\nID: " + ID + "\nState: Unlocked" )
         }
         print( Message )
         hint( Message, 7 )
     }
 
     #
-    # A function that occurs whenever the valid player (either you or player you trust) said "lockchair" or "unlockchair" in chat (case-insensitive).
+    # A function that occurs whenever the valid player (either you or player you trust) says "lockchair" or "unlockchair" in chat (case-insensitive).
     #
     function onChairChatCommandHandler( LastSpoke:entity, LastSaidTrim:string, SplitLastSaid:array, State:number )
     {
@@ -95,7 +111,7 @@ if ( first() )
         }
         #printColor( ">> ", teamColor( LastSpoke:team() ), LastSpoke:name(), vec( 255 ), ": " + LastSaidTrim ) # BUG: Prints more than once when multiple ChairLocker E2s are active (TODO: Fix using data-signals?).
         local Command = SplitLastSaid:removeString( 1 )
-        SplitLastSaid = SplitLastSaid:concat( " " ):explode( "," )
+        SplitLastSaid = SplitLastSaid:concat( " " ):replace(" ", ""):explode( "," )
         for ( I = 1, SplitLastSaid:count() )
         {
             local EntIndex = SplitLastSaid[ I, string ]:toNumber()
@@ -109,7 +125,7 @@ if ( first() )
                 print( "ChairLocker: Skipping. Specified entity ID (" + EntIndex + ") is not a vehicle." )
                 continue
             }
-            if ( Ent:id() != Chair:id() )
+            if ( Ent:id() != ID )
             {
                 continue # If not controlled by this E2 unit, just skip it.
             }
