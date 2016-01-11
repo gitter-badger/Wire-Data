@@ -35,6 +35,7 @@
 #   This includes prop-protection support, so your buddies have access granted automatically (they can use chat commands, just like you and also you are able to see their Steam ID/nickname when they perform lock/unlock).
 #   If you want chair/seat to be automatically removed as you remove ChairLocker E2 from it, wire/set "ChairRemovalOnE2Remove" input to 1 (note: requires "propcore" extension enabled).
 #   If you want to automatically eject the driver (if any) when the vehicle gets locked, wire/set "EjectDriverOnLock" input to 1.
+#   If you want chair/seat to make itself not-solid when the vehicle gets locked, wire/set "SetNotSolidOnLock" input to 0 (note: requires "propcore" extension enabled).
 #
 # Repository URL: https://github.com/CaptainPRICE/Wire-Data
 # For more details, please visit a thread on the forums: http://www.wiremod.com/forum/finished-contraptions/35272-easy-vehicle-locker-unlocker-e2.html
@@ -43,7 +44,15 @@
 #
 
 @name ChairLocker
-@inputs [ChairRemovalOnE2Remove EjectDriverOnLock]
+#ifdef entity:propDelete()
+@inputs ChairRemovalOnE2Remove
+#endif
+#ifdef entity:ejectPod()
+@inputs EjectDriverOnLock
+#endif
+#ifdef entity:propNotSolid( number )
+@inputs SetNotSolidOnLock
+#endif
 @outputs Chair:entity [ID IsLocked]
 @persist [STATE_LOCK STATE_UNLOCK]
 @model models/bull/gates/processor.mdl
@@ -59,10 +68,14 @@ if ( duped() )
 }
 if ( first() )
 {
+#ifndef entity:lockPod( number )
+    error( "Can not continue due core entity functionality is missing!" )
+#endif
+
     Chair = entity():isWeldedTo()
     if ( !Chair:isVehicle() )
     {
-        error( "Not spawned on the chair/seat (vehicle)." )
+        error( "Not spawned on a chair/seat (entity of type 'vehicle')." )
     }
     ID = Chair:id()
 
@@ -78,30 +91,40 @@ if ( first() )
             return # Console said something?
         }
 #ifdef entity:propNotSolid( number )
-        Chair:propNotSolid( IsLocked )
+        if ( ->SetNotSolidOnLock & SetNotSolidOnLock )
+        {
+            Chair:propNotSolid( IsLocked )
+        }
+        else
+        {
+            Chair:propNotSolid( 0 )
+        }
 #endif
         Chair:lockPod( IsLocked )
         local Message = ""
         if ( IsLocked )
         {
+#ifdef entity:ejectPod()
             if ( ->EjectDriverOnLock & EjectDriverOnLock )
             {
                 Chair:ejectPod()
             }
-            Message = "ChairLocker: (" + Player:steamID() + ") " + Player:name() + " locked " + toString( Chair ) + "."
+#endif
+            Message = "ChairLocker: (" + Player:steamID() + ") " + Player:name() + " has locked " + toString( Chair ) + "."
             setName( "Easy Vehicle Locker/Unlocker\nID: " + ID + "\nState: Locked" )
         }
         else
         {
-            Message = "ChairLocker: (" + Player:steamID() + ") " + Player:name() + " unlocked " + toString( Chair ) + "."
+            Message = "ChairLocker: (" + Player:steamID() + ") " + Player:name() + " has unlocked " + toString( Chair ) + "."
             setName( "Easy Vehicle Locker/Unlocker\nID: " + ID + "\nState: Unlocked" )
         }
+        soundPlay( "vehicle_alarm_" + ID, soundDuration( "k_lab.teleport_alarm" ), "k_lab.teleport_alarm" )
         print( Message )
         hint( Message, 7 )
     }
 
     #
-    # A function that occurs whenever the valid player (either you or player you trust) says "lockchair" or "unlockchair" in chat (case-insensitive).
+    # A function that occurs whenever some valid player (either you or player you trust) says lock* or unlock* command in chat (case-insensitive).
     #
     function onChairChatCommandHandler( LastSpoke:entity, LastSaidTrim:string, SplitLastSaid:array, State:number )
     {
@@ -109,9 +132,9 @@ if ( first() )
         {
             hideChat( 1 )
         }
-        #printColor( ">> ", teamColor( LastSpoke:team() ), LastSpoke:name(), vec( 255 ), ": " + LastSaidTrim ) # BUG: Prints more than once when multiple ChairLocker E2s are active (TODO: Fix using data-signals?).
+        #printColor( ">> ", teamColor( LastSpoke:team() ), LastSpoke:name(), vec( 255 ), ": " + LastSaidTrim ) # BUG: Prints more than once when multiple ChairLocker E2s are active (TODO: Fix using data-signals or global-table).
         local Command = SplitLastSaid:removeString( 1 )
-        SplitLastSaid = SplitLastSaid:concat( " " ):replace(" ", ""):explode( "," )
+        SplitLastSaid = SplitLastSaid:concat( " " ):replace( " ", "" ):explode( "," )
         for ( I = 1, SplitLastSaid:count() )
         {
             local EntIndex = SplitLastSaid[ I, string ]:toNumber()
@@ -136,28 +159,36 @@ if ( first() )
             }
             if ( IsLocked & State == STATE_LOCK )
             {
-                print( "ChairLocker: (" + LastSpoke:steamID() + ") " + LastSpoke:name() + " attempted to lock already locked vehicle (" + EntIndex + ")." )
+                print( "ChairLocker: (" + LastSpoke:steamID() + ") " + LastSpoke:name() + " has attempted to lock an already locked vehicle (" + EntIndex + ")." )
                 continue
             }
             if ( !IsLocked & State == STATE_UNLOCK )
             {
-                print( "ChairLocker: (" + LastSpoke:steamID() + ") " + LastSpoke:name() + " attempted to unlock already unlocked vehicle (" + EntIndex + ")." )
+                print( "ChairLocker: (" + LastSpoke:steamID() + ") " + LastSpoke:name() + " has attempted to unlock an already unlocked vehicle (" + EntIndex + ")." )
                 continue
             }
             IsLocked = State == STATE_LOCK
             handleLock( LastSpoke )
         }
-    }
+    } # End of onChairChatCommandHandler( entity, string, array, number ) function
 
 #ifdef entity:propFreeze( number )
     Chair:propFreeze( 1 )
 #endif
+#ifdef noCollideAll( entity, number )
+noCollideAll( Chair, 0 ) # Using Constraint Core to fix an issue with servers where a vehicle has disabled collisions by default (as spawned).
+#endif
+#ifdef entity:removeNoCollideAll()
+Chair:removeNoCollideAll() # Using Nexus Core to fix an issue with servers where a vehicle has disabled collisions by default (as spawned).
+#endif
+#ifdef entity:setSkin( number )
     entity():setSkin( 1 )
-    IsLocked = STATE_LOCK # Default state when E2 is spawned on the vehicle; STATE_LOCK = lock chair/seat.
+#endif
+    IsLocked = STATE_LOCK # Default state when E2 is spawned on a vehicle; STATE_LOCK = lock chair/seat.
     handleLock( owner() )
     runOnChat( 1 )
     runOnLast( 1 )
-}
+} # End of first()
 elseif ( chatClk() )
 {
     local LastSpoke = lastSpoke()
@@ -184,7 +215,7 @@ elseif ( chatClk() )
         case "togglestate",
         case "togglevehicle",
             hideChat( 1 )
-            #printColor( ">> ", teamColor( LastSpoke:team() ), LastSpoke:name(), vec( 255 ), ": " + Trim ) # BUG: Prints more than once when multiple ChairLocker E2s are active (TODO: Fix using data-signals?).
+            #printColor( ">> ", teamColor( LastSpoke:team() ), LastSpoke:name(), vec( 255 ), ": " + Trim ) # BUG: Prints more than once when multiple ChairLocker E2s are active (TODO: Fix using data-signals or global-table).
             if ( ( !LastSpoke:inVehicle() | LastSpoke:vehicle() != Chair ) & LastSpoke:aimEntity() != entity() & LastSpoke:aimEntity() != Chair )
             {
                 break
@@ -193,24 +224,25 @@ elseif ( chatClk() )
             handleLock( LastSpoke )
             break
     }
-}
+} # End of chatClk()
 elseif ( last() )
 {
-    if ( ->ChairRemovalOnE2Remove & ChairRemovalOnE2Remove )
-    {
 #ifdef entity:propDelete()
-        # Remove/delete chair/seat when E2 gets removed.
-        if ( Chair:isVehicle() )
-        {
-            Chair:propDelete()
-        }
-#endif
+    if ( ->ChairRemovalOnE2Remove & ChairRemovalOnE2Remove & Chair:isVehicle() )
+    {
+        # Delete chair/seat when E2 gets removed.
+        Chair:propDelete()
     }
+#endif
+#ifdef entity:propNotSolid(number)
+    Chair:propNotSolid( 0 )
+#endif
     IsLocked = STATE_UNLOCK
     Chair:lockPod( IsLocked ) # Unlock a chair.
-}
+    exit()
+} # End of last()
 if ( !Chair:isVehicle() )
 {
-    # Remove E2 when chair/seat gets removed.
+    # Destroy E2 when chair/seat gets removed.
     selfDestruct()
 }
