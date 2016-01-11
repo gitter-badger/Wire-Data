@@ -35,12 +35,13 @@
 #   This includes prop-protection support, so your buddies have access granted automatically (they can use chat commands, just like you and also you are able to see their Steam ID/nickname when they perform lock/unlock).
 #   If you want chair/seat to be automatically removed as you remove ChairLocker E2 from it, wire/set "ChairRemovalOnE2Remove" input to 1 (note: requires "propcore" extension enabled).
 #   If you want to automatically eject the driver (if any) when the vehicle gets locked, wire/set "EjectDriverOnLock" input to 1.
-#   If you want chair/seat to make itself not-solid when the vehicle gets locked, wire/set "SetNotSolidOnLock" input to 0 (note: requires "propcore" extension enabled).
+#   If you want chair/seat to make itself not-solid when the vehicle gets locked, wire/set "SetNotSolidOnLock" input to 1 (note: requires "propcore" extension enabled).
+#   Also there are aliases/duplicates for each chat-command... Visit a thread on Wiremod forums (link below).
 #
 # Repository URL: https://github.com/CaptainPRICE/Wire-Data
 # For more details, please visit a thread on the forums: http://www.wiremod.com/forum/finished-contraptions/35272-easy-vehicle-locker-unlocker-e2.html
 # In this E2, I have implemented a bit more advanced chat-command parsing. Thanks to Divran for improvements.
-# I hope you will learn something new from it. As always, have fun!
+# I hope you will learn something new from it. I would like to hear your feedback. As always, have fun!
 #
 
 @name ChairLocker
