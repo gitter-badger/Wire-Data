@@ -31,7 +31,7 @@
 #   If you do not specify a valid player Steam ID nor nick/name to "spy" chat-command, it will make an additional check if you are aiming on a valid player (if you are aiming on a vehicle, it will get the driver), if valid target was found it will spy on that player and notify you about it; otherwise you will get an error message describing what went wrong (it is user-friendly).
 #   SpyCam can now be hacked/shutdown once the target player enters a correct secret code (remember to set/wire "IsHackable" input to 1 to enable this functionality).
 #   If you want SpyCam to automatically try to hack itself when the target player enters up to 4 digits (removes the need to hit enter/return key), then wire/set "AutoTryCode" input to 1.
-#   If you want to spy on the target player in thirdperson mode, then wire/set "Thirdperson" input to 1 (adjust position using ThirdpersonForwardOffset/ThirdpersonRightOffset/ThirdpersonUpOffset variables, see lines 58-60).
+#   If you want to spy on the target player in thirdperson mode, then wire/set "Thirdperson" input to 1 (adjust position using ThirdpersonForwardOffset/ThirdpersonRightOffset/ThirdpersonUpOffset variables, see "Constant definitions" in first() block).
 #
 #  Forum thread URL: http://www.wiremod.com/forum/finished-contraptions/35243-spycam-e2-first-public-e2-release.html
 #  Repository URL: https://github.com/CaptainPRICE/Wire-Data
@@ -62,7 +62,7 @@ if ( duped() )
 if ( first() )
 {
     # Constant definitions.
-    Version = array( 4, 2, 1 ) # Force upgrade by assigning Version to array(1,0,0).
+    Version = array( 4, 2, 2 ) # Force upgrade by assigning Version to array(1,0,0).
     VersionPattern = "^(%d+)%.(%d+)%.(%d+)$"
     VersionString = Version:concat( "." )
     VersionFilePath = "updates/spycam/version.txt"
