@@ -1,0 +1,33 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 14
+VisualStudioVersion = 14.0.24720.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "e2files", "e2files", "{AA92C5CE-A21E-4F5E-A7FC-4FAB9A1FB756}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "expression2", "expression2", "{4C9EDE20-49BB-4984-8C8A-C4FF1B82C72D}"
+	ProjectSection(SolutionItems) = preProject
+		expression2\AdvDupeLogger.txt = expression2\AdvDupeLogger.txt
+		expression2\ChairLocker.txt = expression2\ChairLocker.txt
+		expression2\ChatDisplay.txt = expression2\ChatDisplay.txt
+		expression2\FuncButtonUser.txt = expression2\FuncButtonUser.txt
+		expression2\Healthbar.txt = expression2\Healthbar.txt
+		expression2\SpyCam.txt = expression2\SpyCam.txt
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "updates", "updates", "{936A387D-2CA2-4E60-95E9-A350CE55F100}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "spycam", "spycam", "{E3AE5DE5-7BA2-4267-8A21-7CC04849A078}"
+	ProjectSection(SolutionItems) = preProject
+		e2files\updates\spycam\version.txt = e2files\updates\spycam\version.txt
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{936A387D-2CA2-4E60-95E9-A350CE55F100} = {AA92C5CE-A21E-4F5E-A7FC-4FAB9A1FB756}
+		{E3AE5DE5-7BA2-4267-8A21-7CC04849A078} = {936A387D-2CA2-4E60-95E9-A350CE55F100}
+	EndGlobalSection
+EndGlobal
