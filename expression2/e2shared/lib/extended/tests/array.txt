@@ -1,0 +1,20 @@
+@name extended/tests/array
+@trigger none
+
+if (first())
+{
+    #include "e2shared/lib/extended/src/array"
+
+    local URLs = array(
+        "http://localhost:63342/wire-expression2-auto-updater/version.TXT",
+        "http://localhost:63342/wire-expression2-auto-updater/abcd/FILE.txt",
+        "http://localhost:63342/wire-expression2-auto-updater/version.txt",
+        "http://localhost:63342/wire-expression2-auto-updater/ABCD.txt",
+        "http://localhost:63342/wire-expression2-auto-updater/version.txt"
+    )
+    print("Original array:")
+    printTable(URLs)
+    print("New array without duplicates:")
+    local NoDuplicatedURLs = URLs:withoutStringDuplicates()
+    printTable(NoDuplicatedURLs)
+}

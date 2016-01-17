@@ -1,0 +1,298 @@
+@name auto-updater/src/config
+@persist AUTOUPDATER_CONFIG_DOWNLOAD_FILES:array AUTOUPDATER_CONFIG_NOTIFICATION_LEVEL [AUTOUPDATER_CONFIG_COMMON_DIRECTORY AUTOUPDATER_CONFIG_DOWNLOAD_DIRECTORY AUTOUPDATER_CONFIG_LOCAL_VERSION AUTOUPDATER_CONFIG_VERSION_FILE_PATH AUTOUPDATER_CONFIG_VERSION_FILE_URL AUTOUPDATER_CONFIG_VERSION_PATTERN]:string
+#ifdef entity:remoteSetCode(string)
+@persist AUTOUPDATER_CONFIG_UPLOAD_FILE_PATH:string
+#endif
+
+if (first())
+{
+    #include "e2shared/lib/auto-updater/src/enums/notification"
+    #include "e2shared/lib/auto-updater/src/namespace"
+    #include "e2shared/lib/extended/src/array"
+    #include "e2shared/lib/extended/src/string"
+
+    AUTOUPDATER_CONFIG_VERSION_PATTERN = "^(%d+)%.(%d+)%.(%d+)$" # MAJOR.MINOR.PATCH
+
+    function string string:getCommonDirectory()
+    {
+        if (AUTOUPDATER_CONFIG_NOTIFICATION_LEVEL >= AUTOUPDATER_NOTIFICATION_MAX)
+        {
+            print(_HUD_PRINTCONSOLE, "s:getCommonDirectory()")
+        }
+        if (This != NAMESPACE_AUTO_UPDATER)
+        {
+            error("Unresolved namespace (" + This + ").")
+        }
+        return AUTOUPDATER_CONFIG_COMMON_DIRECTORY
+    }
+
+    function array string:getVersionArray()
+    {
+        if (AUTOUPDATER_CONFIG_NOTIFICATION_LEVEL >= AUTOUPDATER_NOTIFICATION_MAX)
+        {
+            print(_HUD_PRINTCONSOLE, "s:getVersionArray()")
+        }
+        if (This != NAMESPACE_AUTO_UPDATER)
+        {
+            error("Unresolved namespace (" + This + ").")
+        }
+        return AUTOUPDATER_CONFIG_LOCAL_VERSION:match(AUTOUPDATER_CONFIG_VERSION_PATTERN)
+    }
+
+    function number string:isValidVersion(Test:string)
+    {
+        if (AUTOUPDATER_CONFIG_NOTIFICATION_LEVEL >= AUTOUPDATER_NOTIFICATION_MAX)
+        {
+            print(_HUD_PRINTCONSOLE, "s:isValidVersion(s)")
+        }
+        if (This != NAMESPACE_AUTO_UPDATER)
+        {
+            error("Unresolved namespace (" + This + ").")
+        }
+        return Test:match(AUTOUPDATER_CONFIG_VERSION_PATTERN):count() == 3
+    }
+
+    function string string:getDownloadDirectory()
+    {
+        if (AUTOUPDATER_CONFIG_NOTIFICATION_LEVEL >= AUTOUPDATER_NOTIFICATION_MAX)
+        {
+            print(_HUD_PRINTCONSOLE, "s:getDownloadDirectory()")
+        }
+        if (This != NAMESPACE_AUTO_UPDATER)
+        {
+            error("Unresolved namespace (" + This + ").")
+        }
+        return AUTOUPDATER_CONFIG_DOWNLOAD_DIRECTORY
+    }
+
+    function string:setDownloadDirectory(DownloadDirectory:string)
+    {
+        if (AUTOUPDATER_CONFIG_NOTIFICATION_LEVEL >= AUTOUPDATER_NOTIFICATION_MAX)
+        {
+            print(_HUD_PRINTCONSOLE, "s:setDownloadDirectory(s)")
+        }
+        if (This != NAMESPACE_AUTO_UPDATER)
+        {
+            error("Unresolved namespace (" + This + ").")
+        }
+        if (DownloadDirectory:sub(-1) == "/")
+        {
+            DownloadDirectory = DownloadDirectory:sub(1, -2)
+        }
+        AUTOUPDATER_CONFIG_DOWNLOAD_DIRECTORY = DownloadDirectory
+    }
+
+    function array string:getDownloadFiles()
+    {
+        if (AUTOUPDATER_CONFIG_NOTIFICATION_LEVEL >= AUTOUPDATER_NOTIFICATION_MAX)
+        {
+            print(_HUD_PRINTCONSOLE, "s:getDownloadFiles()")
+        }
+        if (This != NAMESPACE_AUTO_UPDATER)
+        {
+            error("Unresolved namespace (" + This + ").")
+        }
+        return AUTOUPDATER_CONFIG_DOWNLOAD_FILES
+    }
+
+    function string:setDownloadFiles(DownloadFiles:array)
+    {
+        if (AUTOUPDATER_CONFIG_NOTIFICATION_LEVEL >= AUTOUPDATER_NOTIFICATION_MAX)
+        {
+            print(_HUD_PRINTCONSOLE, "s:setDownloadFiles(r)")
+        }
+        if (This != NAMESPACE_AUTO_UPDATER)
+        {
+            error("Unresolved namespace (" + This + ").")
+        }
+        local ContainsAny = 0
+        for (C = 1, DownloadFiles:count())
+        {
+            if (!ContainsAny)
+            {
+                ContainsAny = 1
+            }
+            local DownloadFileURL = DownloadFiles[C, string]
+            if (((DownloadFileURL:sub(1, 7) != "http://") & (DownloadFileURL:sub(1, 8) != "https://")) | (DownloadFileURL:sub(-4) != ".txt"))
+            {
+                error("Download file URL with index " + C + " is not valid!")
+            }
+        }
+        if (!ContainsAny)
+        {
+            error("s:setDownloadFiles(r) function called with empty array!")
+        }
+        AUTOUPDATER_CONFIG_DOWNLOAD_FILES = DownloadFiles:withoutStringDuplicates()
+        AUTOUPDATER_CONFIG_COMMON_DIRECTORY = AUTOUPDATER_CONFIG_DOWNLOAD_FILES:findCommonDirectoryPath("/") + "/"
+    }
+
+    function string string:getLocalVersion()
+    {
+        if (AUTOUPDATER_CONFIG_NOTIFICATION_LEVEL >= AUTOUPDATER_NOTIFICATION_MAX)
+        {
+            print(_HUD_PRINTCONSOLE, "s:getLocalVersion()")
+        }
+        if (This != NAMESPACE_AUTO_UPDATER)
+        {
+            error("Unresolved namespace (" + This + ").")
+        }
+        return AUTOUPDATER_CONFIG_LOCAL_VERSION
+    }
+
+    function string:setLocalVersion(Version:string)
+    {
+        if (AUTOUPDATER_CONFIG_NOTIFICATION_LEVEL >= AUTOUPDATER_NOTIFICATION_MAX)
+        {
+            print(_HUD_PRINTCONSOLE, "s:setLocalVersion(s)")
+        }
+        if (This != NAMESPACE_AUTO_UPDATER)
+        {
+            error("Unresolved namespace (" + This + ").")
+        }
+        if (!This:isValidVersion(Version))
+        {
+            error("s:setLocalVersion(s) function called with invalid version format!")
+        }
+        AUTOUPDATER_CONFIG_LOCAL_VERSION = Version
+    }
+
+    function number string:getNotificationLevel()
+    {
+        if (AUTOUPDATER_CONFIG_NOTIFICATION_LEVEL >= AUTOUPDATER_NOTIFICATION_MAX)
+        {
+            print(_HUD_PRINTCONSOLE, "s:getNotificationLevel()")
+        }
+        if (This != NAMESPACE_AUTO_UPDATER)
+        {
+            error("Unresolved namespace (" + This + ").")
+        }
+        return AUTOUPDATER_CONFIG_NOTIFICATION_LEVEL
+    }
+
+    function number string:setNotificationLevel(NotificationLevel:number)
+    {
+        if (AUTOUPDATER_CONFIG_NOTIFICATION_LEVEL >= AUTOUPDATER_NOTIFICATION_MAX)
+        {
+            print(_HUD_PRINTCONSOLE, "s:setNotificationLevel(s)")
+        }
+        if (This != NAMESPACE_AUTO_UPDATER)
+        {
+            error("Unresolved namespace (" + This + ").")
+        }
+        AUTOUPDATER_CONFIG_NOTIFICATION_LEVEL = NotificationLevel
+    }
+
+#ifdef entity:remoteSetCode(string)
+    function string string:getUploadFilePath()
+    {
+        if (AUTOUPDATER_CONFIG_NOTIFICATION_LEVEL >= AUTOUPDATER_NOTIFICATION_MAX)
+        {
+            print(_HUD_PRINTCONSOLE, "s:getUploadFilePath()")
+        }
+        if (This != NAMESPACE_AUTO_UPDATER)
+        {
+            error("Unresolved namespace (" + This + ").")
+        }
+        return AUTOUPDATER_CONFIG_UPLOAD_FILE_PATH
+    }
+
+    function string:setUploadFilePath(UploadFileName:string)
+    {
+        if (AUTOUPDATER_CONFIG_NOTIFICATION_LEVEL >= AUTOUPDATER_NOTIFICATION_MAX)
+        {
+            print(_HUD_PRINTCONSOLE, "s:setUploadFilePath(s)")
+        }
+        if (This != NAMESPACE_AUTO_UPDATER)
+        {
+            error("Unresolved namespace (" + This + ").")
+        }
+        if (UploadFileName:length() < 1)
+        {
+            return
+        }
+        local Valid = 0
+        for (C = 1, AUTOUPDATER_CONFIG_DOWNLOAD_FILES:count())
+        {
+            if (AUTOUPDATER_CONFIG_DOWNLOAD_FILES[C, string]:endWith(UploadFileName))
+            {
+                Valid = 1
+                break
+            }
+        }
+        if (!Valid)
+        {
+            error("s:setUploadFilePath(s) function called with invalid filename!")
+        }
+        AUTOUPDATER_CONFIG_UPLOAD_FILE_PATH = UploadFileName
+    }
+#endif
+
+    function string string:getVersionFilePath()
+    {
+        if (AUTOUPDATER_CONFIG_NOTIFICATION_LEVEL >= AUTOUPDATER_NOTIFICATION_MAX)
+        {
+            print(_HUD_PRINTCONSOLE, "s:getVersionFilePath()")
+        }
+        if (This != NAMESPACE_AUTO_UPDATER)
+        {
+            error("Unresolved namespace (" + This + ").")
+        }
+        return AUTOUPDATER_CONFIG_VERSION_FILE_PATH
+    }
+
+    function string:setVersionFilePath(VersionFilePath:string)
+    {
+        if (AUTOUPDATER_CONFIG_NOTIFICATION_LEVEL >= AUTOUPDATER_NOTIFICATION_MAX)
+        {
+            print(_HUD_PRINTCONSOLE, "s:setVersionFilePath(s)")
+        }
+        if (This != NAMESPACE_AUTO_UPDATER)
+        {
+            error("Unresolved namespace (" + This + ").")
+        }
+        AUTOUPDATER_CONFIG_VERSION_FILE_PATH = VersionFilePath
+    }
+
+    function string string:getVersionFileURL()
+    {
+        if (AUTOUPDATER_CONFIG_NOTIFICATION_LEVEL >= AUTOUPDATER_NOTIFICATION_MAX)
+        {
+            print(_HUD_PRINTCONSOLE, "s:getVersionFileURL()")
+        }
+        if (This != NAMESPACE_AUTO_UPDATER)
+        {
+            error("Unresolved namespace (" + This + ").")
+        }
+        return AUTOUPDATER_CONFIG_VERSION_FILE_URL
+    }
+
+    function string:setVersionFileURL(VersionFileURL:string)
+    {
+        if (AUTOUPDATER_CONFIG_NOTIFICATION_LEVEL >= AUTOUPDATER_NOTIFICATION_MAX)
+        {
+            print(_HUD_PRINTCONSOLE, "s:setVersionFileURL(s)")
+        }
+        if (This != NAMESPACE_AUTO_UPDATER)
+        {
+            error("Unresolved namespace (" + This + ").")
+        }
+        if ((VersionFileURL:sub(1, 7) != "http://") & (VersionFileURL:sub(1, 8) != "https://"))
+        {
+            error("s:setVersionFileURL(s) function called with invalid URL.")
+        }
+        AUTOUPDATER_CONFIG_VERSION_FILE_URL = VersionFileURL
+    }
+
+    function string string:getVersionPattern()
+    {
+        if (AUTOUPDATER_CONFIG_NOTIFICATION_LEVEL >= AUTOUPDATER_NOTIFICATION_MAX)
+        {
+            print(_HUD_PRINTCONSOLE, "s:getVersionPattern()")
+        }
+        if (This != NAMESPACE_AUTO_UPDATER)
+        {
+            error("Unresolved namespace (" + This + ").")
+        }
+        return AUTOUPDATER_CONFIG_VERSION_PATTERN
+    }
+} # End of first()

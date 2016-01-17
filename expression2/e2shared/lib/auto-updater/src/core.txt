@@ -1,0 +1,89 @@
+@name auto-updater/src/core
+
+if (first())
+{
+#ifndef runOnFile(number) | fileLoad(string)
+        error("File extension is not enabled!")
+#endif
+#ifndef runOnHTTP(number) | httpRequest(string)
+        error("HTTP extension is not enabled!")
+#endif
+
+    #include "e2shared/lib/auto-updater/src/enums/notification"
+    #include "e2shared/lib/auto-updater/src/enums/updater"
+    #include "e2shared/lib/auto-updater/src/namespace"
+    #include "e2shared/lib/auto-updater/src/config"
+
+    runOnFile(1)
+    runOnHTTP(1)
+
+    function string:init(Version:string, VersionFilePath:string, VersionFileURL:string, DownloadFiles:array, DownloadDirectory:string, UploadFileName:string, NotificationLevel:number)
+    {
+        if (AUTOUPDATER_CONFIG_NOTIFICATION_LEVEL >= AUTOUPDATER_NOTIFICATION_MAX)
+        {
+            print(_HUD_PRINTCONSOLE, "s:init(s,s,s,r,s,s,n)")
+        }
+        if (This != NAMESPACE_AUTO_UPDATER)
+        {
+            error("Unresolved namespace (" + This + ").")
+        }
+        This:setNotificationLevel(NotificationLevel)
+        This:setLocalVersion(Version)
+        This:setVersionFilePath(VersionFilePath)
+        This:setVersionFileURL(VersionFileURL)
+        This:setDownloadDirectory(DownloadDirectory)
+        This:setDownloadFiles(DownloadFiles)
+#ifdef entity:remoteSetCode(string)
+        This:setUploadFilePath(UploadFileName) # Should be called after setDownloadFiles(s) function.
+#endif
+    }
+
+    function number string:compareVersion(Local:string, Server:string)
+    {
+        if (AUTOUPDATER_CONFIG_NOTIFICATION_LEVEL >= AUTOUPDATER_NOTIFICATION_MAX)
+        {
+            print(_HUD_PRINTCONSOLE, "s:compareVersion(s,s)")
+        }
+        if (This != NAMESPACE_AUTO_UPDATER)
+        {
+            error("Unresolved namespace (" + This + ").")
+        }
+        local LocalVersion = Local:match(This:getVersionPattern())
+        local ServerVersion = Server:match(This:getVersionPattern())
+        if (LocalVersion:count() != 3 | ServerVersion:count() != 3)
+        {
+            return AUTOUPDATER_INVALID_VERSION
+        }
+        local LocalMajor = LocalVersion[1, string]:toNumber()
+        local ServerMajor = ServerVersion[1, string]:toNumber()
+        if (LocalMajor < ServerMajor)
+        {
+            return AUTOUPDATER_MAJOR_UPDATE_AVAILABLE
+        }
+        if (LocalMajor > ServerMajor)
+        {
+            return AUTOUPDATER_MAJOR_ABOVE_SERVER_VERSION
+        }
+        local LocalMinor = LocalVersion[2, string]:toNumber()
+        local ServerMinor = ServerVersion[2, string]:toNumber()
+        if (LocalMinor < ServerMinor)
+        {
+            return AUTOUPDATER_MINOR_UPDATE_AVAILABLE
+        }
+        if (LocalMinor > ServerMinor)
+        {
+            return AUTOUPDATER_MINOR_ABOVE_SERVER_VERSION
+        }
+        local LocalPatch = LocalVersion[3, string]:toNumber()
+        local ServerPatch = ServerVersion[3, string]:toNumber()
+        if (LocalPatch < ServerPatch)
+        {
+            return AUTOUPDATER_PATCH_UPDATE_AVAILABLE
+        }
+        if (LocalPatch > ServerPatch)
+        {
+            return AUTOUPDATER_PATCH_ABOVE_SERVER_VERSION
+        }
+        return AUTOUPDATER_NO_UPDATES_AVAILABLE
+    }
+} # End of first()

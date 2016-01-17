@@ -1,0 +1,22 @@
+@name auto-updater/src/namespace
+@persist NAMESPACE_AUTO_UPDATER:string
+
+if (first())
+{
+    NAMESPACE_AUTO_UPDATER = "auto_updater"
+
+    function string auto_updater()
+    {
+        return NAMESPACE_AUTO_UPDATER
+    }
+
+    function string autoUpdater()
+    {
+        return NAMESPACE_AUTO_UPDATER
+    }
+
+    function string autoupdater()
+    {
+        return NAMESPACE_AUTO_UPDATER
+    }
+} # End of first()

@@ -1,0 +1,291 @@
+@name auto-updater/src/main
+@persist AUTOUPDATER_DOWNLOAD_TABLE:table
+
+if (first())
+{
+    #include "e2shared/lib/auto-updater/src/enums/updater"
+    #include "e2shared/lib/auto-updater/src/core"
+    #include "e2shared/lib/auto-updater/src/config"
+    #include "e2shared/lib/auto-updater/src/namespace"
+
+    function string:checkForUpgrades()
+    {
+        if (AUTOUPDATER_CONFIG_NOTIFICATION_LEVEL >= AUTOUPDATER_NOTIFICATION_MAX)
+        {
+            print(_HUD_PRINTCONSOLE, "s:checkForUpgrades()")
+        }
+        if (This != NAMESPACE_AUTO_UPDATER)
+        {
+            error("Unresolved namespace (" + This + ").")
+        }
+        if (!fileCanLoad())
+        {
+            timer("auto_updater_checkforupgrades", 200)
+            return
+        }
+        fileLoad(This:getVersionFilePath())
+    }
+
+    function string:fixVersionFile()
+    {
+        if (AUTOUPDATER_CONFIG_NOTIFICATION_LEVEL >= AUTOUPDATER_NOTIFICATION_MAX)
+        {
+            print(_HUD_PRINTCONSOLE, "s:fixVersionFile()")
+        }
+        if (This != NAMESPACE_AUTO_UPDATER)
+        {
+            error("Unresolved namespace (" + This + ").")
+        }
+        if (!fileCanWrite())
+        {
+            timer("auto_updater_fixversionfile", 200)
+            return
+        }
+        fileWrite(This:getVersionFilePath(), This:getLocalVersion())
+    }
+
+    function number string:downloadCompleted()
+    {
+        if (AUTOUPDATER_CONFIG_NOTIFICATION_LEVEL >= AUTOUPDATER_NOTIFICATION_MAX)
+        {
+            print(_HUD_PRINTCONSOLE, "s:downloadCompleted()")
+        }
+        if (This != NAMESPACE_AUTO_UPDATER)
+        {
+            error("Unresolved namespace (" + This + ").")
+        }
+        return AUTOUPDATER_DOWNLOAD_TABLE:count() == This:getDownloadFiles():count()
+    }
+
+    function string:downloadUpdates()
+    {
+        if (AUTOUPDATER_CONFIG_NOTIFICATION_LEVEL >= AUTOUPDATER_NOTIFICATION_MAX)
+        {
+            print(_HUD_PRINTCONSOLE, "s:downloadUpdates()")
+        }
+        if (This != NAMESPACE_AUTO_UPDATER)
+        {
+            error("Unresolved namespace (" + This + ").")
+        }
+        if (!httpCanRequest())
+        {
+            timer("auto_updater_downloadupdates", 3000)
+            return
+        }
+        httpRequest(This:getDownloadFiles()[AUTOUPDATER_DOWNLOAD_TABLE:count() + 1, string])
+    }
+
+    function string:fetchUpdates(Updater:number)
+    {
+        if (AUTOUPDATER_CONFIG_NOTIFICATION_LEVEL >= AUTOUPDATER_NOTIFICATION_MAX)
+        {
+            print(_HUD_PRINTCONSOLE, "s:fetchUpdates(n)")
+        }
+        if (This != NAMESPACE_AUTO_UPDATER)
+        {
+            error("Unresolved namespace (" + This + ").")
+        }
+        switch (Updater)
+        {
+            case AUTOUPDATER_INVALID_VERSION,
+                error("s:fetchUpdates(n) function called with invalid version number!")
+                break
+            case AUTOUPDATER_MAJOR_ABOVE_SERVER_VERSION,
+                error("Local major version number is greater than server!")
+                break
+            case AUTOUPDATER_MINOR_ABOVE_SERVER_VERSION,
+                error("Local minor version number is greater than server!")
+                break
+            case AUTOUPDATER_PATCH_ABOVE_SERVER_VERSION,
+                error("Local patch version number is greater than server!")
+                break
+            case AUTOUPDATER_NO_UPDATES_AVAILABLE,
+                This:checkForUpgrades()
+                if (AUTOUPDATER_CONFIG_NOTIFICATION_LEVEL >= AUTOUPDATER_NOTIFICATION_LEVEL_2)
+                {
+                    print("You are running the most recent version (" + This:getLocalVersion() + ").")
+                }
+                if (AUTOUPDATER_CONFIG_NOTIFICATION_LEVEL >= AUTOUPDATER_NOTIFICATION_LEVEL_3)
+                {
+                    hint("You are running the most recent version (" + This:getLocalVersion() + ").", 7)
+                }
+                break
+            case AUTOUPDATER_PATCH_UPDATE_AVAILABLE,
+                if (AUTOUPDATER_CONFIG_NOTIFICATION_LEVEL >= AUTOUPDATER_NOTIFICATION_LEVEL_2)
+                {
+                    print("There is new patch update available for download!")
+                }
+                if (AUTOUPDATER_CONFIG_NOTIFICATION_LEVEL >= AUTOUPDATER_NOTIFICATION_LEVEL_3)
+                {
+                    hint("There is new patch update available for download!", 7)
+                }
+                This:downloadUpdates()
+                break
+            case AUTOUPDATER_MINOR_UPDATE_AVAILABLE,
+                if (AUTOUPDATER_CONFIG_NOTIFICATION_LEVEL >= AUTOUPDATER_NOTIFICATION_LEVEL_2)
+                {
+                    print("There is new minor update available for download!")
+                }
+                if (AUTOUPDATER_CONFIG_NOTIFICATION_LEVEL >= AUTOUPDATER_NOTIFICATION_LEVEL_3)
+                {
+                    hint("There is new minor update available for download!", 7)
+                }
+                This:downloadUpdates()
+                break
+            case AUTOUPDATER_MAJOR_UPDATE_AVAILABLE,
+                if (AUTOUPDATER_CONFIG_NOTIFICATION_LEVEL >= AUTOUPDATER_NOTIFICATION_LEVEL_2)
+                {
+                    print("There is new major update available for download!")
+                }
+                if (AUTOUPDATER_CONFIG_NOTIFICATION_LEVEL >= AUTOUPDATER_NOTIFICATION_LEVEL_3)
+                {
+                    hint("There is new major update available for download!", 7)
+                }
+                This:downloadUpdates()
+                break
+            default,
+                error("Unhandled case (" + Updater + ") in s:fetchUpdates(n) function!")
+        }
+    }
+
+    function string:checkForUpdates()
+    {
+        if (AUTOUPDATER_CONFIG_NOTIFICATION_LEVEL >= AUTOUPDATER_NOTIFICATION_MAX)
+        {
+            print(_HUD_PRINTCONSOLE, "s:checkForUpdates()")
+        }
+        if (This != NAMESPACE_AUTO_UPDATER)
+        {
+            error("Unresolved namespace (" + This + ").")
+        }
+        if (!httpCanRequest())
+        {
+            timer("auto_updater_checkforupdates", 3000)
+            return
+        }
+        httpRequest(This:getVersionFileURL())
+    }
+
+    function string:installUpdates()
+    {
+        if (AUTOUPDATER_CONFIG_NOTIFICATION_LEVEL >= AUTOUPDATER_NOTIFICATION_MAX)
+        {
+            print(_HUD_PRINTCONSOLE, "s:installUpdates()")
+        }
+        if (This != NAMESPACE_AUTO_UPDATER)
+        {
+            error("Unresolved namespace (" + This + ").")
+        }
+        local AllDone = 1
+        #foreach (FileName, FileTable:table = AUTOUPDATER_DOWNLOAD_TABLE)
+        local Keys = AUTOUPDATER_DOWNLOAD_TABLE:keys()
+        for (Index = 1, Keys:count())
+        {
+            local FileName = Keys[Index, string]
+            local FileTable = AUTOUPDATER_DOWNLOAD_TABLE[FileName, table]
+            if (FileTable["Saved", number])
+            {
+                continue
+            }
+            AllDone = 0
+            if (!fileCanWrite())
+            {
+                timer("auto_updater_installupdates", 200)
+                return
+            }
+            fileWrite(This:getDownloadDirectory() + "/" + FileName, FileTable["Data", string])
+            FileTable["Saved", number] = 1
+        }
+        if (!AllDone)
+        {
+            timer("auto_updater_installupdates", 200)
+            return
+        }
+        if (AUTOUPDATER_CONFIG_NOTIFICATION_LEVEL >= AUTOUPDATER_NOTIFICATION_LEVEL_1)
+        {
+            print("Update has been downloaded successfully. Saved to: " + This:getDownloadDirectory())
+        }
+#ifdef entity:remoteSetCode(string)
+        if (This:getUploadFilePath():length() > 4 & AUTOUPDATER_DOWNLOAD_TABLE[This:getUploadFilePath(), table]["IsMain", number])
+        {
+            entity():remoteSetCode(AUTOUPDATER_DOWNLOAD_TABLE[This:getUploadFilePath(), table]["Data", string])
+        }
+#endif
+    }
+
+    auto_updater():checkForUpdates()
+} # End of first()
+elseif (clk("auto_updater_checkforupdates"))
+{
+    auto_updater():checkForUpdates()
+}
+elseif (clk("auto_updater_checkforupgrades"))
+{
+    auto_updater():checkForUpgrades()
+}
+elseif (clk("auto_updater_fixversionfile"))
+{
+    auto_updater():fixVersionFile()
+}
+elseif (clk("auto_updater_downloadupdates"))
+{
+    auto_updater():downloadUpdates()
+}
+elseif (clk("auto_updater_installupdates"))
+{
+    auto_updater():installUpdates()
+}
+elseif (httpClk() & !auto_updater():downloadCompleted())
+{
+    local RequestURL = httpRequestUrl()
+    local HttpData = httpData()
+    if (RequestURL == auto_updater():getVersionFileURL())
+    {
+        auto_updater():fetchUpdates(auto_updater():compareVersion(auto_updater():getLocalVersion(), HttpData))
+    }
+    else
+    {
+        #foreach (K, DownloadFile:string = auto_updater():getDownloadFiles())
+        for (C = 1, auto_updater():getDownloadFiles():count())
+        {
+            local DownloadFile = auto_updater():getDownloadFiles()[C, string]
+            if (DownloadFile:lower() != RequestURL:lower())
+            {
+                continue
+            }
+            local FileName = RequestURL:sub(auto_updater():getCommonDirectory():length() + 1)
+            AUTOUPDATER_DOWNLOAD_TABLE[FileName, table] = table()
+            AUTOUPDATER_DOWNLOAD_TABLE[FileName, table]["Data", string] = HttpData
+            AUTOUPDATER_DOWNLOAD_TABLE[FileName, table]["Saved", number] = 0
+#ifdef entity:remoteSetCode(string)
+            if (auto_updater():getUploadFilePath():length() > 4 & FileName:lower() == auto_updater():getUploadFilePath():lower())
+            {
+                AUTOUPDATER_DOWNLOAD_TABLE[FileName, table]["IsMain", number] = 1
+            }
+#endif
+            "autoUpdaterOnFileDownloaded"(FileName, HttpData, AUTOUPDATER_DOWNLOAD_TABLE:count(), auto_updater():getDownloadFiles():count())
+            break
+        }
+        if (auto_updater():downloadCompleted())
+        {
+            auto_updater():installUpdates()
+        }
+        else
+        {
+            auto_updater():downloadUpdates()
+        }
+    }
+} # End of httpClk()
+elseif (fileClk(auto_updater():getVersionFilePath()))
+{
+    local VersionFileContents = fileRead()
+    if (fileStatus() == _FILE_OK & auto_updater():isValidVersion(VersionFileContents))
+    {
+        local CompareVersion = auto_updater():compareVersion(VersionFileContents, auto_updater():getLocalVersion())
+        if ((CompareVersion == AUTOUPDATER_MAJOR_UPDATE_AVAILABLE) | (CompareVersion == AUTOUPDATER_MINOR_UPDATE_AVAILABLE) | (CompareVersion == AUTOUPDATER_PATCH_UPDATE_AVAILABLE))
+        {
+            "autoUpdaterOnUpgrade"(VersionFileContents, auto_updater():getLocalVersion())
+        }
+    }
+    auto_updater():fixVersionFile()
+} # End of fileClk(s)

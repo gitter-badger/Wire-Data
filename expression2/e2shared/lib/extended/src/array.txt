@@ -1,0 +1,30 @@
+@name extended/src/array
+
+if (first())
+{
+    function array array:withoutStringDuplicates()
+    {
+        local NoDuplicates = array()
+        #foreach (K, X:string = This)
+        for (I = 1, This:count())
+        {
+            local X = This[I, string]
+            local Exists = 0
+            #foreach (K, Y:string = NoDuplicates)
+            for (J = 1, NoDuplicates:count())
+            {
+                local Y = NoDuplicates[J, string]
+                if (X:lower() == Y:lower())
+                {
+                    Exists = 1
+                    break
+                }
+            }
+            if (!Exists)
+            {
+                NoDuplicates:pushString(X)
+            }
+        }
+        return NoDuplicates
+    }
+} # End of first()

@@ -1,0 +1,38 @@
+@name auto-updater/tests/implementation
+@trigger none
+
+if (first())
+{
+    #include "e2shared/lib/auto-updater/src/core"
+
+    auto_updater():init(
+        # Version of this Expression 2 file (default format is MAJOR.MINOR.PATCH).
+        "1.0.0",
+        # Filepath where to store the version string (Optional, useful if you want to make use of upgrade detection. If you choose to use it, then stick with it once you make it up, otherwise you may lose upgrade detection/backward compatibility).
+        "updates/project-name/version.txt",
+        # URL of the version file on the webserver, a file should only output a version number (default format is MAJOR.MINOR.PATCH).
+        "http://example.com/expression2/project-name/version.txt",
+        # A string array consisting of (txt) file URLs to be downloaded when there is new update available (it will automatically find a common directory for all URLs).
+        array(
+            "http://example.com/expression2/project-name/main_e2.txt"
+        ),
+        # Directory name where to save downloaded file(s).
+        ">e2shared/downloads/project-name",
+        # Main filename (relative to directory name) to automatically upload to this Expression 2 chip (optional, requires "remoteupload" extension enabled).
+        "main_e2.txt",
+        # Notification about activity (useful while debugging).
+        AUTOUPDATER_NOTIFICATION_MAX
+    )
+
+    function autoUpdaterOnFileDownloaded(FileName:string, HttpData:string, DownloadedCount:number, TotalCount:number)
+    {
+        print("Downloaded <" + FileName + "> file (progress: " + DownloadedCount + "/" + TotalCount + ").")
+    }
+
+    function autoUpdaterOnUpgrade(OldVersion:string, NewVersion:string)
+    {
+        print("Successfully upgraded from v" + OldVersion + " to v" + NewVersion)
+    }
+} # End of first()
+
+#include "e2shared/lib/auto-updater/src/main"

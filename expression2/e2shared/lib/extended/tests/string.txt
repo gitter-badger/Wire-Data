@@ -1,0 +1,17 @@
+@name extended/tests/string
+@trigger none
+
+if (first())
+{
+    #include "e2shared/lib/extended/src/string"
+
+    local URLs = array(
+        #"http://localhost:63342/wire-expression2-auto-updater/abcd/FILE.txt",
+        #"http://localhost:63342/wire-expression2-auto-updater/hello_world/implementation.txt",
+        #"http://localhost:63342/wire-expression2-auto-updater/ABCD.txt",
+        #"http://localhost:63342/wire-expression2-auto-updater/implementation.txt",
+        "http://localhost:63342/wire-expression2-auto-updater/version.txt"
+    )
+    #printTable(URLs)
+    print("Common path: " + URLs:findCommonDirectoryPath("/"))
+}

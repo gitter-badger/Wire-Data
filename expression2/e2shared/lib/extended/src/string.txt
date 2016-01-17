@@ -1,0 +1,93 @@
+@name extended/src/string
+
+if (first())
+{
+    function number string:endWith(End:string)
+    {
+        return !End:length() | This:sub(-End:length()) == End
+    } # End of s:endWith(s)
+
+    function number string:startWith(Start:string)
+    {
+        return This:sub(1, Start:length()) == Start
+    } # End of s:startWith(s)
+
+    function string array:findCommonDirectoryPath(Separator:string)
+    {
+        local ThisCount = This:count()
+        if (ThisCount == 1)
+        {
+            local Split = This[1, string]:explode(Separator)
+            Split:removeString(Split:count())
+            return Split:concat(Separator)
+        }
+        local MaxLength = 0
+        #foreach (K, Path:string = This)
+        for (I = 1, This:count())
+        {
+            local Path = This[I, string]
+            if (MaxLength < Path:length())
+            {
+                MaxLength = Path:length()
+            }
+        }
+        local First = ""
+        #foreach (K, Path:string = This)
+        for (I = 1, This:count())
+        {
+            local Path = This[I, string]
+            if (Path:length() == MaxLength)
+            {
+                First = Path
+                break
+            }
+        }
+        local Common = ""
+        local Split = First:explode(Separator)
+        #foreach (K, PathSegment:string = Split)
+        for (I = 1, Split:count())
+        {
+            local PathSegment = Split[I, string]
+            local All1 = 1
+            #foreach (K, Path:string = This)
+            for (J = 1, This:count())
+            {
+                local Path = This[J, string]
+                if (Path:startWith(PathSegment))
+                {
+                    continue
+                }
+                All1 = 0
+                break
+            }
+            if ((Common:length() == 0) & All1)
+            {
+                Common = PathSegment
+            }
+            else
+            {
+                local All2 = 1
+                #foreach (K, Path:string = This)
+                for (K = 1, This:count())
+                {
+                    local Path = This[K, string]
+                    if (Path:startWith(Common + Separator + PathSegment))
+                    {
+                        continue
+                    }
+                    All2 = 0
+                    break
+                }
+                if (All2)
+                {
+                    Common = Common + Separator + PathSegment
+                }
+                else
+                {
+                    break
+                }
+            }
+        }
+        return Common
+    } # End of r:findCommonDirectoryPath(s)
+} # End of first()

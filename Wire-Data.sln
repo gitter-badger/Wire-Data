@@ -12,6 +12,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "expression2", "expression2"
 		expression2\ChatDisplay.txt = expression2\ChatDisplay.txt
 		expression2\FuncButtonUser.txt = expression2\FuncButtonUser.txt
 		expression2\Healthbar.txt = expression2\Healthbar.txt
+		expression2\SimpleAI.txt = expression2\SimpleAI.txt
 		expression2\SpyCam.txt = expression2\SpyCam.txt
 	EndProjectSection
 EndProject
@@ -22,6 +23,45 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "spycam", "spycam", "{E3AE5D
 		e2files\updates\spycam\version.txt = e2files\updates\spycam\version.txt
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "e2shared", "e2shared", "{607F2233-09E8-4140-9FC3-EE2F57491AD3}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "lib", "lib", "{5729D7B4-A958-45BF-8179-7AC5E08745F4}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "auto-updater", "auto-updater", "{3430EED3-69EA-47D0-9D88-E561CD965CFF}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{B9640E6C-C73E-461B-A5CD-2B6F46E2E53C}"
+	ProjectSection(SolutionItems) = preProject
+		expression2\e2shared\lib\auto-updater\src\config.txt = expression2\e2shared\lib\auto-updater\src\config.txt
+		expression2\e2shared\lib\auto-updater\src\core.txt = expression2\e2shared\lib\auto-updater\src\core.txt
+		expression2\e2shared\lib\auto-updater\src\main.txt = expression2\e2shared\lib\auto-updater\src\main.txt
+		expression2\e2shared\lib\auto-updater\src\namespace.txt = expression2\e2shared\lib\auto-updater\src\namespace.txt
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{1505F7DD-47DB-40A6-8AC5-B7BB3082879C}"
+	ProjectSection(SolutionItems) = preProject
+		expression2\e2shared\lib\auto-updater\tests\implementation.txt = expression2\e2shared\lib\auto-updater\tests\implementation.txt
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "enums", "enums", "{34EE70A1-AF32-4820-8341-70941ED88C06}"
+	ProjectSection(SolutionItems) = preProject
+		expression2\e2shared\lib\auto-updater\src\enums\notification.txt = expression2\e2shared\lib\auto-updater\src\enums\notification.txt
+		expression2\e2shared\lib\auto-updater\src\enums\updater.txt = expression2\e2shared\lib\auto-updater\src\enums\updater.txt
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "extended", "extended", "{21385883-119C-4A3E-BE6B-030EEDAB510C}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{EFD9A21C-2957-4392-9943-83FDAB58655D}"
+	ProjectSection(SolutionItems) = preProject
+		expression2\e2shared\lib\extended\src\array.txt = expression2\e2shared\lib\extended\src\array.txt
+		expression2\e2shared\lib\extended\src\string.txt = expression2\e2shared\lib\extended\src\string.txt
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0ADE5CBC-975A-4602-9302-0824E127117A}"
+	ProjectSection(SolutionItems) = preProject
+		expression2\e2shared\lib\extended\tests\array.txt = expression2\e2shared\lib\extended\tests\array.txt
+		expression2\e2shared\lib\extended\tests\string.txt = expression2\e2shared\lib\extended\tests\string.txt
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -29,5 +69,14 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{936A387D-2CA2-4E60-95E9-A350CE55F100} = {AA92C5CE-A21E-4F5E-A7FC-4FAB9A1FB756}
 		{E3AE5DE5-7BA2-4267-8A21-7CC04849A078} = {936A387D-2CA2-4E60-95E9-A350CE55F100}
+		{607F2233-09E8-4140-9FC3-EE2F57491AD3} = {4C9EDE20-49BB-4984-8C8A-C4FF1B82C72D}
+		{5729D7B4-A958-45BF-8179-7AC5E08745F4} = {607F2233-09E8-4140-9FC3-EE2F57491AD3}
+		{3430EED3-69EA-47D0-9D88-E561CD965CFF} = {5729D7B4-A958-45BF-8179-7AC5E08745F4}
+		{B9640E6C-C73E-461B-A5CD-2B6F46E2E53C} = {3430EED3-69EA-47D0-9D88-E561CD965CFF}
+		{1505F7DD-47DB-40A6-8AC5-B7BB3082879C} = {3430EED3-69EA-47D0-9D88-E561CD965CFF}
+		{34EE70A1-AF32-4820-8341-70941ED88C06} = {B9640E6C-C73E-461B-A5CD-2B6F46E2E53C}
+		{21385883-119C-4A3E-BE6B-030EEDAB510C} = {5729D7B4-A958-45BF-8179-7AC5E08745F4}
+		{EFD9A21C-2957-4392-9943-83FDAB58655D} = {21385883-119C-4A3E-BE6B-030EEDAB510C}
+		{0ADE5CBC-975A-4602-9302-0824E127117A} = {21385883-119C-4A3E-BE6B-030EEDAB510C}
 	EndGlobalSection
 EndGlobal
